@@ -46,8 +46,7 @@ Safari/Chrome의 공유 → **홈 화면에 추가** 로 열면 주소창 없이
 ## 사용한 툴
 
 - **Claude (Anthropic)**: PRD 정리, 화면별 프롬프트 작성, HTML 프로토타입 생성과 수정
-- **Claude Code**: 레포 폴더 구성(phou/, web/), 앱/웹을 고르는 첫 화면(index.html) 제작
-- **HTML / CSS / JavaScript**: 외부 라이브러리 없이 파일 하나로 만들었어요.
+- **Claude Code**: 레포 폴더 구성(phou/, web/), 앱/웹을 고르는 첫 화면(index.html) 제작, 프로토타입 수정
 - **GitHub Pages**: 배포
 
 ## 작업 과정

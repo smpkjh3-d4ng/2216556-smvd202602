@@ -1,0 +1,3403 @@
+<title>사진 공유 앱 홈 화면</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: 375px 폰 프레임 하나, 위에 상태 전환 바. 앱은 무채색(흰색~검정)만, 브랜드 색 미정. 하단 탭으로 홈 ↔ 전체 사진 */
+:root {
+  color-scheme: light;
+  --bg: #FFFFFF;
+  --page: #EEEEEE;
+  --fg: #111111;
+  --sub: #707070;
+  --line: #E4E4E4;
+  --ph: #E2E2E2;
+  --ph-2: #CFCFCF;
+  --accent: #1A1A1A;
+  --accent-soft: #F2F2F2;
+  --danger: #333333;
+  --danger-soft: #EAEAEA;
+  --font: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--page);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: 14px;
+  word-break: keep-all;
+  padding-inline: 16px;
+  padding-block: 20px 32px;
+}
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 상태 전환 바 (프로토타입 확인용) */
+.switcher {
+  max-width: 375px; margin: 0 auto 12px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+}
+.switcher span { font-size: 12px; color: var(--sub); margin-right: 4px; letter-spacing: .02em; }
+.switcher button {
+  font-size: 12px; padding: 6px 12px; border-radius: 999px;
+  background: var(--bg); border: 1px solid var(--line); color: var(--sub);
+}
+.switcher button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: #fff; }
+
+/* 폰 프레임 */
+.phone {
+  max-width: 375px; margin: 0 auto;
+  height: min(780px, calc(100vh - 90px)); min-height: 560px;
+  background: var(--bg);
+  border-radius: 28px; border: 1px solid var(--line);
+  box-shadow: 0 12px 40px rgba(0,0,0,.08);
+  display: flex; flex-direction: column; overflow: hidden; position: relative;
+}
+.scroll { flex: 1; overflow-y: auto; padding: 20px 20px 24px; display: flex; flex-direction: column; gap: 20px; }
+.scroll > * { flex-shrink: 0; }
+[hidden] { display: none !important; }
+
+/* 상단 */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { width: 72px; height: 22px; border: 1.5px dashed var(--ph-2); border-radius: 4px; background: var(--accent-soft); display: grid; place-items: center; font-size: 10px; color: var(--sub); letter-spacing: .02em; }
+.greet { margin: -8px 0 0; font-size: 21px; line-height: 1.35; font-weight: 700; text-wrap: balance; }
+.top-icons { display: flex; align-items: center; gap: 6px; padding-top: 2px; }
+.icon-btn { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; position: relative; }
+.icon-btn svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); border: 1.5px solid var(--bg); }
+.avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--ph-2); display: grid; place-items: center; font-size: 13px; font-weight: 600; color: var(--fg); }
+
+/* 핵심 버튼 */
+.create {
+  width: 100%; text-align: left;
+  background: var(--accent); color: #fff;
+  border-radius: 20px; padding: 22px 20px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.create:active { transform: scale(.99); }
+.create small { display: block; font-size: 13px; opacity: .85; margin-bottom: 6px; }
+.create strong { font-size: 20px; font-weight: 700; line-height: 1.3; }
+.create .plus { width: 52px; height: 52px; flex: none; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; }
+.create .plus svg { width: 26px; height: 26px; stroke: #fff; stroke-width: 2.2; stroke-linecap: round; }
+
+/* 제안 카드 */
+.suggest { background: var(--accent-soft); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.suggest p { margin: 0; font-size: 14px; line-height: 1.55; }
+.suggest b { color: var(--accent); }
+.suggest-actions { display: flex; gap: 8px; }
+.btn { height: 38px; padding: 0 16px; border-radius: 10px; font-size: 13px; font-weight: 600; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-ghost { background: var(--bg); color: var(--sub); }
+.btn-line { background: var(--bg); color: var(--fg); border: 1px solid var(--line); }
+
+/* 폴더 그리드 (홈) */
+.section { display: flex; flex-direction: column; gap: 12px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; }
+.section-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.section-head span { font-size: 13px; color: var(--sub); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.folder { text-align: left; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.thumb { width: 100%; aspect-ratio: 1 / 1; border-radius: 14px; background: var(--ph); position: relative; overflow: hidden; }
+.thumb::after { content: ""; position: absolute; left: 50%; top: 50%; width: 28px; height: 22px; transform: translate(-50%,-50%); border: 2px solid var(--ph-2); border-radius: 5px; }
+.badge { position: absolute; top: 8px; left: 8px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #fff; background: var(--accent); padding: 4px 8px; border-radius: 999px; }
+.badge i { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .35; } }
+.f-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.faces { display: flex; }
+.faces span { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--bg); background: var(--ph-2); margin-left: -6px; font-size: 9px; font-weight: 600; display: grid; place-items: center; color: var(--fg); }
+.faces span:first-child { margin-left: 0; }
+
+/* 스크롤해도 상단 고정 */
+.sticky { position: sticky; top: -20px; z-index: 3; background: var(--bg); margin: -20px -20px 0; padding: 20px 20px 12px; }
+.sticky.top { padding-bottom: 10px; }
+.sticky.scrolled { box-shadow: 0 1px 0 var(--line); }
+.sticky { transition: transform .25s ease, box-shadow .2s; }
+.sticky.hide { transform: translateY(-100%); box-shadow: none; }
+.p-sticky { display: flex; flex-direction: column; gap: 14px; }
+
+/* 전체 사진 */
+.p-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.p-top h1 { margin: 0; font-size: 21px; font-weight: 700; }
+.p-top .count { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.cal-btn { position: relative; width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--accent-soft); color: var(--fg); display: inline-flex; align-items: center; gap: 6px; }
+.cal-btn .on { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--fg); border: 1.5px solid var(--accent-soft); }
+.cal-btn[aria-expanded="true"] .on { border-color: var(--fg); background: #fff; }
+.cal-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cal-btn[aria-expanded="true"] { background: var(--fg); color: #fff; }
+.cal { background: var(--bg); border-radius: 18px; padding: 16px 12px 12px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.18); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; padding-inline: 4px; }
+.cal-head b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cal-nav { display: flex; gap: 4px; }
+.cal-nav button { width: 32px; height: 32px; border-radius: 50%; font-size: 18px; color: var(--fg); }
+.cal-nav button:hover { background: var(--accent-soft); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.cal-wd { font-size: 11px; color: var(--sub); padding-bottom: 4px; }
+.cal-grid { row-gap: 4px; }
+.cal-day { position: relative; width: 100%; max-width: 42px; aspect-ratio: 1 / 1; margin-inline: auto; border-radius: 10px; font-size: 13px; font-variant-numeric: tabular-nums; color: #B5B5B5; display: grid; place-items: center; }
+.cal-day.has { color: #fff; font-weight: 700; background: #A9A9A9; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.cal-day.has span { position: relative; z-index: 1; }
+.cal-day.today:not(.has) { color: var(--fg); font-weight: 700; }
+.cal-day[aria-pressed="true"] { outline: 2.5px solid var(--fg); outline-offset: 2px; }
+.cal-note { font-size: 12px; color: var(--sub); padding-inline: 4px; display: flex; align-items: center; gap: 6px; }
+.cal-note i { width: 12px; height: 12px; border-radius: 3px; background: #A9A9A9; }
+.cal-layer { position: absolute; inset: 0; z-index: 6; }
+.cal-dim { position: absolute; inset: 0; background: rgba(0,0,0,.35); animation: fade .15s ease-out; }
+.cal-pop { position: absolute; top: 76px; left: 12px; right: 12px; animation: drop .18s ease-out; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes drop { from { opacity: 0; transform: translateY(-8px); } }
+.day { scroll-margin-top: 12px; }
+.day.hl .day-head { text-decoration: underline; text-underline-offset: 4px; }
+.chips { display: flex; gap: 8px; overflow-x: auto; margin: -4px -20px 0; padding: 4px 20px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 500; border: 1px solid var(--line); color: var(--sub); background: var(--bg); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.day { display: flex; flex-direction: column; gap: 8px; }
+.day-head { display: flex; align-items: baseline; gap: 6px; font-size: 14px; font-weight: 600; }
+.day-head span { font-size: 12px; font-weight: 500; color: var(--sub); }
+.pgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-inline: -20px; }
+.ph { aspect-ratio: 1 / 1; background: var(--ph); position: relative; }
+.ph:nth-child(3n+2) { background: #E8E8E8; }
+.ph:nth-child(4n+1) { background: #DCDCDC; }
+.stack { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 4px; padding: 5px 7px; font-size: 11px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8), 0 0 2px rgba(0,0,0,.7); }
+.stack svg { width: 13px; height: 13px; stroke: #fff; fill: none; stroke-width: 2; flex: none; filter: drop-shadow(0 1px 2px rgba(0,0,0,.75)); }
+.stack b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.ph.in-group::after { content: ""; position: absolute; inset: 0; box-shadow: inset 0 0 0 2px var(--fg); pointer-events: none; }
+.ph.in-group:not(.lead)::before { content: ""; position: absolute; top: 5px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--fg); }
+.best { position: absolute; top: 5px; left: 5px; font-size: 9px; font-weight: 700; letter-spacing: .04em; color: #fff; background: var(--accent); padding: 2px 5px; border-radius: 4px; }
+
+.list { display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }
+.row:last-child { border-bottom: 0; }
+.row-thumb { width: 60px; height: 60px; border-radius: 12px; background: var(--ph); flex: none; }
+.row-face { width: 52px; height: 52px; border-radius: 50%; background: var(--ph-2); flex: none; display: grid; place-items: center; font-weight: 600; font-size: 16px; }
+.row-pin { width: 52px; height: 52px; border-radius: 12px; background: var(--accent-soft); flex: none; display: grid; place-items: center; }
+.row-pin svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+.row-body { flex: 1; min-width: 0; }
+.row-body b { display: block; font-size: 15px; font-weight: 600; }
+.row-body span { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.row-arrow { color: var(--sub); font-size: 18px; }
+.me { font-size: 10px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 6px; border-radius: 4px; margin-left: 4px; vertical-align: 2px; }
+
+
+/* 로딩 */
+.sk { background: var(--ph); border-radius: 10px; position: relative; overflow: hidden; }
+.sk::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.6), transparent); transform: translateX(-100%); animation: shimmer 1.3s infinite; }
+@keyframes shimmer { to { transform: translateX(100%); } }
+
+/* 빈 상태 / 오류 */
+.center-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; padding: 24px 8px; }
+.illust { width: 148px; height: 120px; border-radius: 20px; border: 2px dashed var(--ph-2); display: grid; place-items: center; color: var(--sub); font-size: 12px; margin-bottom: 8px; }
+.center-state h3 { margin: 0; font-size: 18px; font-weight: 700; }
+.center-state p { margin: 0 0 8px; font-size: 14px; color: var(--sub); line-height: 1.55; }
+.center-state .btn { height: 46px; padding: 0 24px; font-size: 15px; border-radius: 12px; }
+.err-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--danger-soft); display: grid; place-items: center; margin-bottom: 6px; }
+.err-icon svg { width: 26px; height: 26px; stroke: var(--danger); stroke-width: 2; fill: none; stroke-linecap: round; }
+.search-icon { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; margin-bottom: 6px; }
+.search-icon svg { width: 26px; height: 26px; stroke: var(--accent); stroke-width: 2; fill: none; stroke-linecap: round; }
+
+/* 하단 탭 */
+.fab { position: absolute; right: 18px; bottom: 82px; z-index: 4; width: 56px; height: 56px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+.fab svg { width: 26px; height: 26px; stroke: #fff; fill: none; stroke-width: 2.4; stroke-linecap: round; }
+.fab:active { transform: scale(.96); }
+.scroll { padding-bottom: 88px; }
+.tabbar { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(3, 1fr); align-items: end; padding: 8px 6px 12px; background: var(--bg); }
+.tab { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: var(--sub); padding: 4px 0; }
+.tab svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
+.tab-plus { width: 46px; height: 46px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; margin-top: -18px; box-shadow: 0 4px 12px rgba(0,0,0,.25); }
+.tab-plus svg { stroke: #fff; stroke-width: 2.4; }
+
+/* 토스트 (화면 이동 대신 피드백) */
+.toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); background: var(--fg); color: #fff; font-size: 13px; padding: 10px 16px; border-radius: 10px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+.toast.show { opacity: 1; }
+
+/* 공유 앨범 */
+.phone.in-album .tabbar { display: none; }
+.phone.in-album .fab { bottom: 20px; }
+.phone.in-album.ai-bar .fab { bottom: 88px; }
+.phone.in-album .toast { bottom: 92px; }
+.phone.in-album.ai-bar .toast { bottom: 160px; }
+.phone.ai-bar .scroll { padding-bottom: 170px; }
+.a-sticky { padding-bottom: 8px; }
+.a-sticky .sticky-dl { position: absolute; left: 0; right: 0; top: 100%; padding: 4px 20px 12px; background: var(--bg); box-shadow: 0 1px 0 var(--line); display: none; }
+.a-sticky.past .sticky-dl { display: block; }
+.a-sticky.past { box-shadow: none; }
+.a-sticky.hide { transform: translateY(calc(-100% - 64px)); }
+.a-sticky .sticky-dl .dl-btn { width: 100%; height: 42px; }
+.a-cover { margin: -12px -20px 0; aspect-ratio: 16 / 10; background: #CFCFCF; position: relative; display: grid; place-items: center; }
+.a-cover svg { width: 56px; height: 56px; stroke: rgba(255,255,255,.75); fill: none; stroke-width: 1.4; }
+.a-cover .cover-tag { position: absolute; left: 12px; bottom: 12px; font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.a-body { display: flex; flex-direction: column; gap: 14px; }
+.a-bar { display: flex; align-items: center; gap: 4px; margin-inline: -8px; }
+.a-bar h1 { flex: 1; min-width: 0; margin: 0; font-size: 18px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-actions { display: flex; gap: 2px; }
+.a-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.a-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.a-meta b { color: var(--fg); font-weight: 600; }
+.live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #fff; background: var(--accent); padding: 4px 8px; border-radius: 999px; }
+.live i { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: pulse 1.6s ease-in-out infinite; }
+.a-people { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--sub); }
+.faces.lg span { width: 26px; height: 26px; font-size: 11px; margin-left: -8px; }
+.faces.lg span:first-child { margin-left: 0; }
+.faces.lg span.more { background: var(--fg); color: #fff; font-size: 10px; }
+.dl-btn { position: relative; overflow: hidden; height: 46px; border-radius: 12px; border: 1px solid var(--fg); font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.dl-btn svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; position: relative; }
+.dl-btn span { position: relative; }
+.dl-btn .fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent-soft); transition: width .12s linear; }
+.dl-btn:disabled { cursor: default; border-color: var(--line); }
+.a-tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin-inline: -20px; border-bottom: 1px solid var(--line); }
+.a-tab { height: 44px; font-size: 14px; color: var(--sub); position: relative; }
+.a-tab[aria-selected="true"] { color: var(--fg); font-weight: 700; }
+.a-tab[aria-selected="true"]::after { content: ""; position: absolute; left: 20%; right: 20%; bottom: -1px; height: 2px; background: var(--fg); }
+.a-tab:disabled { opacity: .5; cursor: default; }
+.ph.member { -webkit-touch-callout: none; user-select: none; }
+.hint { font-size: 12px; color: var(--sub); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; line-height: 1.5; }
+.ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 12px; }
+.ai-card { text-align: left; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ai-card .ph { border-radius: 12px; overflow: hidden; }
+.ai-card p { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.4; }
+.ai-card small { font-size: 11px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.ai-bar-el { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; background: var(--bg); border-top: 1px solid var(--line); padding: 10px 16px 14px; }
+.ai-bar-el button { width: 100%; height: 50px; border-radius: 12px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sheet-layer { position: absolute; inset: 0; z-index: 9; }
+
+/* 사진 상세 */
+.viewer { position: absolute; inset: 0; z-index: 8; background: #0B0B0B; color: #fff; display: flex; flex-direction: column; animation: fade .18s ease-out; }
+.viewer button { color: #fff; }
+.phone.viewing .toast { bottom: auto; top: 76px; background: #fff; color: #111; }
+.v-top { display: flex; align-items: center; gap: 6px; padding: 14px 10px 8px; transition: opacity .2s; }
+.v-top .icon-btn svg { stroke: #fff; }
+.v-meta { flex: 1; min-width: 0; }
+.v-meta b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.v-meta small { display: block; font-size: 12px; color: #A9A9A9; font-variant-numeric: tabular-nums; margin-top: 1px; }
+.v-count { font-size: 12px; color: #A9A9A9; font-variant-numeric: tabular-nums; padding-right: 6px; }
+.v-stage { flex: 1; min-height: 0; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; touch-action: pan-y; cursor: grab; }
+.v-photo { width: 100%; aspect-ratio: 3 / 4; max-height: 100%; display: grid; place-items: center; transition: transform .2s ease; }
+.v-photo svg { width: 64px; height: 64px; stroke: rgba(255,255,255,.28); fill: none; stroke-width: 1.4; }
+.v-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,.12); font-size: 22px; display: grid; place-items: center; }
+.v-nav.prev { left: 10px; } .v-nav.next { right: 10px; }
+.v-nav:disabled { opacity: 0; pointer-events: none; }
+.v-best { display: flex; align-items: center; gap: 10px; padding: 12px 16px 4px; min-height: 44px; transition: opacity .2s; }
+.v-best .pill { font-size: 11px; font-weight: 800; letter-spacing: .04em; background: #fff; color: #111; padding: 3px 8px; border-radius: 5px; }
+.v-best p { flex: 1; margin: 0; font-size: 14px; font-weight: 600; }
+.v-best .set { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.v-strip { display: flex; gap: 6px; overflow-x: auto; padding: 8px 16px; scrollbar-width: none; transition: opacity .2s; }
+.v-strip::-webkit-scrollbar { display: none; }
+.v-thumb { position: relative; flex: none; width: 50px; height: 50px; border-radius: 8px; opacity: .55; }
+.v-thumb[aria-current="true"] { opacity: 1; outline: 2px solid #fff; outline-offset: 2px; }
+.v-thumb i { position: absolute; left: 3px; bottom: 3px; font-style: normal; font-size: 8px; font-weight: 800; background: #fff; color: #111; padding: 1px 3px; border-radius: 3px; }
+.v-actions { display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 6px 16px; transition: opacity .2s; }
+.v-act { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 0; font-size: 11px; color: #DDD !important; }
+.v-act svg { width: 24px; height: 24px; stroke: #fff; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.v-act[aria-pressed="true"] svg { stroke: #fff; fill: rgba(255,255,255,.2); }
+.v-act.locked { color: #6E6E6E !important; }
+.v-act.locked svg { stroke: #6E6E6E; }
+.v-info { margin: 0 12px 6px; padding: 14px 16px; border-radius: 14px; background: #1C1C1C; }
+.v-info dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 13px; }
+.v-info dt { color: #9A9A9A; }
+.v-info dd { margin: 0; font-variant-numeric: tabular-nums; }
+.viewer.bare .v-top, .viewer.bare .v-best, .viewer.bare .v-strip, .viewer.bare .v-actions, .viewer.bare .v-info, .viewer.bare .v-nav { opacity: 0; pointer-events: none; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 86%; overflow-y: auto; background: var(--bg); border-radius: 22px 22px 0 0; padding: 12px 20px 22px; display: flex; flex-direction: column; gap: 14px; animation: up .2s ease-out; }
+.sheet::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--ph-2); margin: 0 auto 4px; }
+.sheet h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+.sheet p { margin: -6px 0 0; font-size: 13px; color: var(--sub); line-height: 1.5; }
+.sheet-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
+.sheet-actions .btn { height: 50px; font-size: 15px; border-radius: 12px; }
+.btn-soft { background: var(--accent-soft); color: var(--fg); }
+@keyframes up { from { transform: translateY(100%); } }
+
+/* 메뉴 */
+.m-head { display: flex; align-items: center; gap: 4px; min-height: 36px; }
+.m-head h1 { margin: 0; font-size: 21px; font-weight: 700; }
+.m-head.sub { margin-left: -8px; }
+.m-head.sub h1 { font-size: 18px; }
+.m-label { font-size: 12px; font-weight: 600; color: var(--sub); letter-spacing: .02em; margin: 0 0 -10px 4px; }
+.profile { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; flex-wrap: wrap; }
+.profile .pic { width: 54px; height: 54px; border-radius: 50%; background: var(--ph-2); display: grid; place-items: center; font-size: 20px; font-weight: 700; flex: none; }
+.profile .who { flex: 1; min-width: 0; }
+.profile .who b { display: block; font-size: 17px; font-weight: 700; }
+.profile .who span { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.profile .edit { height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--accent-soft); }
+.profile .find { flex-basis: 100%; display: flex; align-items: center; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+.profile .find div { flex: 1; min-width: 0; }
+.profile .find b { display: block; font-size: 14px; font-weight: 600; }
+.profile .find small { font-size: 12px; color: var(--sub); line-height: 1.45; }
+.m-list { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.m-row { width: 100%; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; text-align: left; }
+.m-row + .m-row { border-top: 1px solid var(--line); }
+.m-row svg.ic { width: 20px; height: 20px; stroke: var(--fg); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.m-row .txt { flex: 1; min-width: 0; }
+.m-row .txt b { display: block; font-size: 15px; font-weight: 500; }
+.m-row .txt small { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.m-row .val { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.m-row .chev { color: var(--sub); font-size: 18px; }
+.meter { height: 6px; border-radius: 3px; background: var(--ph); margin-top: 8px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--fg); border-radius: 3px; }
+.switch { width: 46px; height: 28px; border-radius: 14px; background: var(--ph-2); position: relative; flex: none; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+.switch[aria-checked="true"] { background: var(--fg); }
+.switch[aria-checked="true"]::after { transform: translateX(18px); }
+.status { font-size: 12px; font-weight: 600; padding: 4px 9px; border-radius: 999px; background: var(--accent-soft); color: var(--fg); white-space: nowrap; }
+.status.off { background: var(--fg); color: #fff; }
+.warn { display: flex; gap: 10px; align-items: flex-start; padding: 14px; border-radius: 14px; background: var(--accent-soft); font-size: 13px; line-height: 1.5; }
+.warn svg { width: 20px; height: 20px; stroke: var(--fg); fill: none; stroke-width: 2; stroke-linecap: round; flex: none; margin-top: 1px; }
+.warn b { display: block; font-size: 14px; }
+.warn button { margin-top: 8px; height: 32px; padding: 0 12px; border-radius: 8px; background: var(--fg); color: #fff; font-size: 12px; font-weight: 600; }
+.m-foot { text-align: center; font-size: 12px; color: var(--sub); }
+.phone.in-menu .fab { display: none; }
+
+/* 선택 모드 · 옵션 시트 */
+.check { position: absolute; top: 6px; right: 6px; z-index: 2; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.2); display: grid; place-items: center; }
+.check svg { width: 13px; height: 13px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.ph[aria-pressed="true"] .check { background: var(--fg); border-color: var(--fg); }
+.ph[aria-pressed="true"] .check svg { opacity: 1; }
+.ph[aria-pressed="true"]::before { content: ""; position: absolute; inset: 0; z-index: 1; border: 3px solid var(--fg); background: rgba(255,255,255,.25); }
+.selecting .ph.in-group:not(.lead)::before { display: none; }
+.p-actions { display: flex; align-items: center; gap: 6px; }
+.text-btn { height: 36px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--fg); color: #fff; }
+.selbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; background: transparent; padding: 10px 16px 16px; pointer-events: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.selbar button { height: 52px; border-radius: 12px; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--bg); color: var(--fg); pointer-events: auto; box-shadow: 0 6px 18px rgba(0,0,0,.22); }
+.selbar button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.selbar button.primary { background: var(--fg); color: #fff; }
+.selbar button:disabled { cursor: default; color: #A8A8A8; }
+.selbar button.primary:disabled { background: #8C8C8C; color: #E6E6E6; }
+.phone.selecting-on .tabbar, .phone.selecting-on .fab { display: none !important; }
+.sel-top h1 { flex: 1; min-width: 0; margin: 0; }
+.sel-top h1 button { font-size: 18px; font-weight: 700; padding: 4px 0; }
+.sel-top .text-link { font-size: 15px; font-weight: 600; padding: 8px 8px; }
+.selall-ic svg { fill: none; }
+.selall-ic[aria-pressed="true"] svg circle { fill: var(--fg); }
+.selall-ic[aria-pressed="true"] svg path { stroke: #fff; }
+.sel-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 40px; }
+.sel-head b { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sel-head .text-link { justify-self: start; font-size: 15px; font-weight: 600; padding: 8px 0; }
+.sel-head .text-link:last-child { justify-self: end; }
+.sel-sub { font-size: 12px; color: var(--sub); text-align: center; margin-top: -8px; }
+.ph { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.opt-list { display: flex; flex-direction: column; margin-inline: -8px; }
+.opt { display: flex; align-items: center; gap: 14px; padding: 12px 8px; border-radius: 12px; text-align: left; width: 100%; }
+.opt:hover { background: var(--accent-soft); }
+.opt svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.opt b { display: block; font-size: 15px; font-weight: 600; }
+.opt small { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
+.sheet .btn-block { height: 50px; border-radius: 12px; font-size: 15px; font-weight: 600; }
+
+/* 폴더 만들기 */
+.phone.in-create .tabbar, .phone.in-create .fab { display: none !important; }
+.phone.in-create .toast { bottom: 96px; }
+.c-head { display: flex; align-items: center; gap: 4px; margin-left: -8px; min-height: 40px; }
+.c-head h1 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; }
+.c-steps { display: flex; gap: 4px; padding-right: 4px; }
+.c-steps i { width: 18px; height: 4px; border-radius: 2px; background: var(--ph-2); }
+.c-steps i.on { background: var(--fg); }
+.c-title { margin: 0; font-size: 22px; font-weight: 700; line-height: 1.35; text-wrap: balance; }
+.c-lead { margin: -12px 0 0; font-size: 14px; color: var(--sub); line-height: 1.5; }
+.field { display: flex; flex-direction: column; gap: 8px; }
+.field > label, .field > .lbl { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; }
+.field > label em, .field > .lbl em { font-style: normal; font-weight: 400; color: var(--sub); font-variant-numeric: tabular-nums; }
+.inp { width: 100%; height: 50px; border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; font: inherit; font-size: 15px; color: var(--fg); background: var(--bg); }
+.inp:focus { outline: none; border-color: var(--fg); }
+textarea.inp { height: 84px; padding: 12px 14px; resize: none; line-height: 1.5; }
+.inp::placeholder { color: #A8A8A8; }
+.cover-pick { display: flex; align-items: center; gap: 14px; }
+.cover-pick button { width: 76px; height: 76px; border-radius: 14px; border: 1.5px dashed var(--ph-2); display: grid; place-items: center; background: var(--accent-soft); }
+.cover-pick button svg { width: 26px; height: 26px; stroke: var(--sub); fill: none; stroke-width: 1.8; stroke-linecap: round; }
+.cover-pick small { font-size: 12px; color: var(--sub); line-height: 1.5; }
+.dur { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.dur button { height: 40px; border-radius: 10px; border: 1px solid var(--line); font-size: 13px; color: var(--sub); }
+.dur button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: #fff; font-weight: 600; }
+.when { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; font-size: 13px; }
+.when span { color: var(--sub); }
+.when .inp { height: 44px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.when-err { margin: 0; font-size: 13px; font-weight: 600; color: var(--fg); }
+.when-sum { font-size: 13px; color: var(--sub); background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; line-height: 1.5; }
+.when-sum b { color: var(--fg); }
+.c-cta { position: absolute; left: 0; right: 0; bottom: 0; z-index: 5; padding: 10px 16px 16px; background: var(--bg); border-top: 1px solid var(--line); }
+.c-cta button { width: 100%; height: 52px; border-radius: 12px; background: var(--fg); color: #fff; font-size: 16px; font-weight: 700; }
+.c-cta button:disabled { background: var(--ph-2); color: #fff; cursor: default; }
+.c-err { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.5; padding: 12px 14px; border-radius: 12px; background: var(--accent-soft); }
+.c-err svg { width: 18px; height: 18px; stroke: var(--fg); fill: none; stroke-width: 2; stroke-linecap: round; flex: none; margin-top: 1px; }
+.done { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 32px; padding: 16px 0 24px; }
+.done-head { display: flex; flex-direction: column; gap: 10px; }
+.done .ok { width: 56px; height: 56px; border-radius: 50%; background: var(--fg); display: grid; place-items: center; }
+.done .ok svg { width: 28px; height: 28px; stroke: #fff; fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.done h2 { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.35; text-wrap: balance; }
+.done p { margin: 0; font-size: 14px; color: var(--sub); line-height: 1.5; }
+.qr { width: 184px; height: 184px; padding: 14px; border-radius: 16px; border: 1px solid var(--line); background: #fff; }
+.qr svg { width: 100%; height: 100%; display: block; }
+.linkbox { display: flex; align-items: center; gap: 8px; width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 6px 6px 6px 14px; }
+.linkbox code { flex: 1; min-width: 0; font-family: inherit; font-size: 13px; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.linkbox button { height: 36px; padding: 0 14px; border-radius: 8px; background: var(--fg); color: #fff; font-size: 13px; font-weight: 600; flex: none; }
+.share-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; margin-top: -8px; }
+.share-row button { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: var(--sub); }
+.share-row button span { width: 48px; height: 48px; border-radius: 50%; background: var(--accent-soft); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: var(--fg); }
+.friends { display: flex; gap: 8px; flex-wrap: wrap; width: 100%; }
+.friends button { height: 36px; padding: 0 12px 0 4px; border-radius: 999px; border: 1px solid var(--line); display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.friends button i { width: 28px; height: 28px; border-radius: 50%; background: var(--ph-2); font-style: normal; font-size: 11px; font-weight: 600; display: grid; place-items: center; }
+.friends button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: #fff; }
+.friends button[aria-pressed="true"] i { background: rgba(255,255,255,.25); color: #fff; }
+.friends-block { width: 100%; display: flex; flex-direction: column; gap: 12px; padding-top: 24px; border-top: 1px solid var(--line); }
+.sub-label { margin: 0; width: 100%; text-align: left; font-size: 14px; font-weight: 700; }
+
+/* 폴더 설정 */
+.phone.in-fset .tabbar, .phone.in-fset .fab, .phone.in-notif .tabbar, .phone.in-notif .fab,
+.phone.in-profile .tabbar, .phone.in-profile .fab { display: none; }
+.phone.in-profile .toast { bottom: 28px; }
+
+/* 친구 목록 */
+.f-search { position: relative; }
+.f-search svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; stroke: var(--sub); fill: none; stroke-width: 2; stroke-linecap: round; }
+.f-search .inp { padding-left: 40px; height: 46px; background: var(--accent-soft); border-color: transparent; }
+.f-search .inp:focus { background: var(--bg); border-color: var(--fg); }
+.f-row { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 0; text-align: left; }
+.f-row + .f-row { border-top: 1px solid var(--line); }
+.f-face { width: 44px; height: 44px; border-radius: 50%; background: var(--ph-2); display: grid; place-items: center; font-weight: 700; flex: none; }
+.f-face.lg { width: 72px; height: 72px; font-size: 26px; }
+.f-row .txt { flex: 1; min-width: 0; }
+.f-row .txt b { display: block; font-size: 15px; font-weight: 600; }
+.f-row .txt small { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.f-row .chev { color: var(--sub); font-size: 18px; }
+.inv-list { display: flex; flex-direction: column; margin-inline: -8px; }
+.inv-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 12px; text-align: left; width: 100%; }
+.inv-row:hover:not(:disabled) { background: var(--accent-soft); }
+.inv-row:disabled { opacity: .45; cursor: default; }
+.inv-row .row-thumb { width: 52px; height: 52px; border-radius: 10px; }
+.inv-row .txt { flex: 1; min-width: 0; }
+.inv-row .txt b { display: block; font-size: 15px; font-weight: 600; }
+.inv-row .txt small { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.inv-row .tag { font-size: 11px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+.inv-new { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 12px; width: 100%; text-align: left; margin-inline: -8px; width: calc(100% + 16px); }
+.inv-new span { width: 52px; height: 52px; border-radius: 10px; border: 1.5px dashed var(--ph-2); display: grid; place-items: center; font-size: 22px; color: var(--sub); }
+.inv-new b { font-size: 15px; font-weight: 600; }
+.phone.f-editing .tabbar { display: none !important; }
+.f-row .f-check { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ph-2); display: grid; place-items: center; flex: none; }
+.f-row .f-check svg { width: 13px; height: 13px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; }
+.f-row[aria-pressed="true"] .f-check { background: var(--fg); border-color: var(--fg); }
+.f-row[aria-pressed="true"] .f-check svg { opacity: 1; }
+.f-row { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.f-note { font-size: 12px; color: var(--sub); line-height: 1.5; margin: -6px 2px 0; }
+.f-hidden { font-size: 13px; color: var(--sub); text-align: center; }
+.f-hidden button { text-decoration: underline; text-underline-offset: 3px; color: var(--sub); }
+.f-who { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.f-who h2 { margin: 6px 0 0; font-size: 21px; font-weight: 700; }
+.f-who span { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.f-acts { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.f-acts button { height: 48px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+
+/* 프로필 */
+.mf { display: flex; flex-direction: column; gap: 10px; }
+.mf-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-inline: -20px; }
+.mf-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mf-acts button { height: 44px; border-radius: 12px; font-size: 14px; font-weight: 700; }
+.mf-off { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; background: var(--accent-soft); }
+.mf-off b { font-size: 15px; }
+.mf-off p { margin: 0; font-size: 13px; color: var(--sub); line-height: 1.5; }
+.mf-off button { align-self: flex-start; height: 38px; padding: 0 14px; border-radius: 10px; background: var(--fg); color: #fff; font-size: 13px; font-weight: 600; margin-top: 4px; }
+.cls-head { display: flex; flex-direction: column; gap: 2px; }
+.cls-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+.cls-head span { font-size: 12px; color: var(--sub); }
+.cls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cls-card { text-align: left; border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cls-card .top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.cls-card b { font-size: 15px; font-weight: 700; }
+.cls-card .n { font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.cls-card .big { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+.cls-card .big small { font-size: 13px; font-weight: 600; margin-left: 2px; }
+.cls-card .peek { display: flex; }
+.cls-card .peek i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--bg); background: var(--ph-2); margin-left: -7px; font-style: normal; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.cls-card .peek i:first-child { margin-left: 0; }
+.cls-card .peek.sq i { border-radius: 6px; margin-left: 3px; border: 0; }
+.cls-card .peek.sq i:first-child { margin-left: 0; }
+.cls-card.warn { background: var(--accent-soft); border-color: transparent; }
+.cl-list .row-face { width: 48px; height: 48px; }
+.cl-sum { font-size: 13px; color: var(--sub); margin: -8px 0 0; }
+.cl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-inline: -20px; }
+.air { gap: 10px !important; }
+.air-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.air-chip { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 6px 0 12px; border-radius: 999px; background: var(--fg); color: #fff; font-size: 13px; font-weight: 600; }
+.air-chip button { width: 22px; height: 22px; border-radius: 50%; color: #fff; font-size: 15px; line-height: 1; opacity: .8; }
+.air-input { display: flex; gap: 6px; }
+.air-input .inp { height: 42px; font-size: 14px; }
+.air-input button { flex: none; height: 42px; padding: 0 14px; border-radius: 12px; background: var(--fg); color: #fff; font-size: 13px; font-weight: 700; }
+.air-sugg { display: flex; flex-wrap: wrap; gap: 6px; }
+.air-sugg button { height: 30px; padding: 0 10px; border-radius: 999px; border: 1px dashed var(--ph-2); font-size: 12px; color: var(--sub); }
+
+/* 카드형 추천 확인 */
+.rv-start { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: var(--fg); color: #fff; text-align: left; width: 100%; }
+.rv-start .stackp { position: relative; width: 52px; height: 60px; flex: none; }
+.rv-start .stackp i { position: absolute; inset: 0; border-radius: 8px; background: #6A6A6A; border: 2px solid var(--fg); }
+.rv-start .stackp i:nth-child(1) { transform: rotate(-8deg) translateX(-4px); background: #4A4A4A; }
+.rv-start .stackp i:nth-child(2) { transform: rotate(6deg) translateX(4px); background: #5A5A5A; }
+.rv-start b { display: block; font-size: 16px; }
+.rv-start small { font-size: 12px; opacity: .75; }
+.rv-start .go { margin-left: auto; height: 34px; padding: 0 14px; border-radius: 999px; background: #fff; color: var(--fg); font-size: 13px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.rv-prog { display: flex; gap: 4px; }
+.rv-prog i { flex: 1; height: 4px; border-radius: 2px; background: var(--ph); }
+.rv-prog i.on { background: var(--fg); }
+.rv-stage { position: relative; display: grid; place-items: center; touch-action: pan-y; }
+.rv-card { width: 100%; border-radius: 22px; overflow: hidden; background: var(--bg); box-shadow: 0 10px 30px rgba(0,0,0,.14); transition: transform .25s ease, opacity .25s; cursor: grab; user-select: none; }
+.rv-card .img { aspect-ratio: 1 / 1; position: relative; display: grid; place-items: center; }
+.rv-card .img svg { width: 60px; height: 60px; stroke: rgba(255,255,255,.4); fill: none; stroke-width: 1.4; }
+.rv-card .img .best { top: 12px; left: 12px; font-size: 11px; padding: 3px 8px; }
+.rv-card .stamp { position: absolute; top: 18px; padding: 6px 12px; border: 3px solid #fff; border-radius: 10px; color: #fff; font-size: 18px; font-weight: 800; opacity: 0; transition: opacity .1s; }
+.rv-card .stamp.keep { right: 16px; transform: rotate(10deg); }
+.rv-card .stamp.skip { left: 16px; transform: rotate(-10deg); }
+.rv-card .meta { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
+.rv-card .meta b { font-size: 17px; }
+.rv-card .meta small { font-size: 12px; color: var(--sub); }
+.rv-alt { display: flex; flex-direction: column; gap: 8px; }
+.rv-alt p { margin: 0; font-size: 13px; font-weight: 600; }
+.rv-alt .strip { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.rv-alt .strip button { position: relative; flex: none; width: 54px; height: 54px; border-radius: 10px; }
+.rv-alt .strip button[aria-current="true"] { outline: 2.5px solid var(--fg); outline-offset: 2px; }
+.rv-alt .strip button i { position: absolute; left: 3px; bottom: 3px; font-style: normal; font-size: 8px; font-weight: 800; background: var(--fg); color: #fff; padding: 1px 3px; border-radius: 3px; }
+.rv-acts { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.rv-acts button { height: 54px; border-radius: 14px; font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.rv-acts button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rv-hint { text-align: center; font-size: 12px; color: var(--sub); margin-top: -6px; }
+.rv-sum { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 16px; }
+.rv-sum div { padding: 16px 6px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.rv-sum div + div { border-left: 1px solid var(--line); }
+.rv-sum b { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.rv-sum span { font-size: 12px; color: var(--sub); }
+.sh-info { width: 100%; text-align: left; }
+.qr-btn { position: relative; cursor: zoom-in; }
+.qr-btn small { position: absolute; left: 50%; bottom: -26px; transform: translateX(-50%); white-space: nowrap; font-size: 12px; color: var(--sub); }
+.qr.expired { opacity: .15; }
+.qr-wrap { position: relative; display: grid; place-items: center; }
+.qr-wrap .exp { position: absolute; inset: 0; display: grid; place-items: center; font-size: 14px; font-weight: 700; text-align: center; line-height: 1.4; }
+.qr-full { position: absolute; inset: 0; z-index: 9; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; animation: fade .15s ease-out; }
+.qr-full .qr { width: 280px; height: 280px; border: 0; padding: 0; }
+.qr-full h2 { margin: 0; font-size: 22px; font-weight: 700; }
+.qr-full p { margin: 0; font-size: 14px; color: var(--sub); }
+.qr-full button { margin-top: 12px; height: 44px; padding: 0 22px; border-radius: 999px; background: var(--fg); color: #fff; font-size: 14px; font-weight: 600; }
+.pe-save { font-size: 15px !important; font-weight: 700 !important; color: var(--fg) !important; padding: 8px 6px !important; }
+.pe-save:disabled { color: #B5B5B5 !important; cursor: default; }
+.pe-phone { display: flex; align-items: center; justify-content: space-between; color: var(--sub); font-variant-numeric: tabular-nums; }
+.pe-phone .text-link { font-size: 13px; font-weight: 600; color: var(--fg); padding: 6px 2px; }
+.pf-card { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; padding: 8px 0 4px; }
+.pf-pic { position: relative; width: 88px; height: 88px; border-radius: 50%; background: var(--ph-2); display: grid; place-items: center; font-size: 32px; font-weight: 700; }
+.pf-pic .cam { position: absolute; right: -2px; bottom: -2px; width: 30px; height: 30px; border-radius: 50%; background: var(--fg); border: 3px solid var(--bg); display: grid; place-items: center; }
+.pf-pic .cam svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pf-name { margin: 4px 0 0; font-size: 22px; font-weight: 700; }
+.pf-phone { font-size: 13px; color: var(--sub); font-variant-numeric: tabular-nums; }
+.pf-edit { height: 34px; padding: 0 16px; border-radius: 999px; background: var(--accent-soft); font-size: 13px; font-weight: 600; margin-top: 4px; }
+.pf-form { width: 100%; display: flex; flex-direction: column; gap: 10px; text-align: left; margin-top: 6px; }
+.pf-form .row2 { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+.pf-form .row2 button { height: 46px; border-radius: 12px; font-size: 15px; font-weight: 700; }
+.pf-stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 16px; }
+.pf-stats div { padding: 14px 8px; text-align: center; display: flex; flex-direction: column; gap: 2px; }
+.pf-stats div + div { border-left: 1px solid var(--line); }
+.pf-stats b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pf-stats span { font-size: 12px; color: var(--sub); }
+.pf-best { display: flex; align-items: center; gap: 14px; padding: 16px; border-radius: 16px; background: var(--accent-soft); }
+.pf-best .n { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pf-best p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--sub); }
+.pf-best p b { color: var(--fg); font-size: 14px; }
+.pf-tabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--line); }
+.pf-tabs button { height: 42px; font-size: 14px; color: var(--sub); position: relative; }
+.pf-tabs button[aria-selected="true"] { color: var(--fg); font-weight: 700; }
+.pf-tabs button[aria-selected="true"]::after { content: ""; position: absolute; left: 25%; right: 25%; bottom: -1px; height: 2px; background: var(--fg); }
+.pf-empty { font-size: 13px; color: var(--sub); text-align: center; padding: 16px 0; }
+.pf-danger { display: flex; justify-content: center; gap: 18px; font-size: 13px; color: var(--sub); padding-bottom: 8px; }
+.pf-danger button { color: var(--sub); text-decoration: underline; text-underline-offset: 3px; }
+.phone.in-notif .toast { bottom: 28px; }
+
+/* 알림 */
+.n-head { display: flex; align-items: center; gap: 4px; margin-left: -8px; min-height: 40px; }
+.n-head h1 { flex: 1; margin: 0; font-size: 18px; font-weight: 700; }
+.n-head .text-link { font-size: 13px; font-weight: 600; color: var(--sub); padding: 8px 4px; }
+.n-head .text-link:disabled { opacity: .4; cursor: default; }
+.n-group { display: flex; flex-direction: column; gap: 2px; }
+.n-group h2 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--sub); }
+.n-item { position: relative; display: flex; gap: 12px; padding: 14px 28px 14px 12px; margin-inline: -12px; border-radius: 14px; text-align: left; width: calc(100% + 24px); }
+.n-item.unread { background: var(--accent-soft); }
+.n-ic { width: 40px; height: 40px; border-radius: 50%; background: var(--fg); color: #fff; display: grid; place-items: center; flex: none; font-size: 14px; font-weight: 700; }
+.n-ic svg { width: 20px; height: 20px; stroke: #fff; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.n-ic.face { background: var(--ph-2); color: var(--fg); }
+.n-ic.soft { background: var(--ph); }
+.n-ic.soft svg { stroke: var(--fg); }
+.n-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.n-body p { margin: 0; font-size: 14px; line-height: 1.5; }
+.n-body p b { font-weight: 700; }
+.n-body small { font-size: 12px; color: var(--sub); }
+.n-thumbs { display: flex; gap: 4px; margin-top: 4px; }
+.n-thumbs i { width: 44px; height: 44px; border-radius: 8px; background: var(--ph-2); position: relative; }
+.n-thumbs i:nth-child(2) { background: #BDBDBD; } .n-thumbs i:nth-child(3) { background: #D9D9D9; }
+.n-thumbs i.more { display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 700; color: var(--fg); background: var(--ph); }
+.n-thumbs i b { position: absolute; left: 3px; top: 3px; font-size: 7px; font-weight: 800; background: var(--fg); color: #fff; padding: 1px 3px; border-radius: 3px; }
+.n-acts { display: flex; gap: 6px; margin-top: 6px; }
+.n-acts button { height: 34px; padding: 0 14px; border-radius: 9px; font-size: 13px; font-weight: 600; background: var(--bg); border: 1px solid var(--line); }
+.n-acts button.primary { background: var(--fg); border-color: var(--fg); color: #fff; }
+.n-done { font-size: 12px; font-weight: 600; color: var(--fg); margin-top: 4px; }
+.n-dot { position: absolute; top: 18px; right: 12px; width: 7px; height: 7px; border-radius: 50%; background: var(--fg); }
+.n-foot { text-align: center; font-size: 12px; color: var(--sub); line-height: 1.6; }
+.phone.in-fset .toast { bottom: 28px; }
+.period { border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.period-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.period-top b { font-size: 15px; font-weight: 700; }
+.period dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.period dt { color: var(--sub); }
+.period dd { margin: 0; font-weight: 500; }
+.period dd small { color: var(--sub); font-weight: 400; }
+.period-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.period-actions .btn { height: 42px; border-radius: 10px; }
+.status.ended { background: var(--ph); color: var(--sub); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg button { height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); font-size: 13px; color: var(--sub); }
+.seg button[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: #fff; font-weight: 600; }
+.m-row.stack-row { flex-direction: column; align-items: stretch; gap: 10px; }
+.host { font-size: 10px; font-weight: 700; color: #fff; background: var(--fg); padding: 2px 6px; border-radius: 4px; margin-left: 4px; vertical-align: 2px; }
+.row-face.sm { width: 36px; height: 36px; font-size: 13px; }
+.danger-btn { width: 100%; height: 50px; border-radius: 12px; border: 1px solid var(--line); font-size: 15px; font-weight: 600; color: var(--fg); }
+.btn-strong { background: var(--fg); color: #fff; }
+
+@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="switcher" id="switcher" role="group" aria-label="화면 상태 전환"></div>
+
+<div class="phone" id="phone">
+  <div class="scroll" id="screen"></div>
+
+  <nav class="tabbar" aria-label="하단 탭">
+    <button class="tab" type="button" data-screen="home">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>홈
+    </button>
+    <button class="tab" type="button" data-screen="photos">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>전체 사진
+    </button>
+    <button class="tab" type="button" data-screen="menu">
+      <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>메뉴
+    </button>
+  </nav>
+
+  <button class="fab" id="fab" type="button" aria-label="새 공유 앨범 만들기" data-msg="폴더 만들기 화면은 아직 만들지 않았어요">
+    <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
+
+  <div class="cal-layer" id="calLayer" hidden>
+    <div class="cal-dim" data-calclose></div>
+    <div class="cal-pop" id="calPop"></div>
+  </div>
+
+  <div class="selbar" id="selbar" hidden>
+    <button type="button" id="selDel" data-seldel><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>삭제</button>
+    <button type="button" id="selSave" class="primary" data-selsave><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>저장</button>
+  </div>
+
+  <div class="ai-bar-el" id="aiBar" hidden>
+    <button type="button" data-aisave></button>
+  </div>
+
+  <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="사진 보기"></div>
+
+  <div class="sheet-layer" id="sheet" hidden>
+    <div class="cal-dim" data-sheetclose></div>
+    <div class="sheet" id="sheetBody" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+/* ---------- 더미 데이터 ---------- */
+const folders = [
+  { name: "속초 여행",  date: "10.3 – 10.4", photos: 214, members: ["지","민","서"], extra: 2, live: true,  owner: true },
+  { name: "동아리 MT",  date: "9.27",        photos: 186, members: ["성","은","하"], extra: 8, live: false, owner: false },
+  { name: "롯데월드",   date: "9.14",        photos: 73,  members: ["유","나","준"], extra: 0, live: false, owner: true },
+  { name: "전시회",     date: "8.30",        photos: 41,  members: ["윤","수","아"], extra: 1, live: false, owner: false },
+];
+const TOTAL = folders.reduce((s, f) => s + f.photos, 0);
+
+// 날짜 묶음: count장, best = AI 추천 사진 위치, groups = { 추천 사진 위치: 비슷한 사진 묶음 장수 }
+const days = [
+  { iso: "2026-10-04", date: "10월 4일", folder: "속초 여행", count: 12, best: [0, 7], groups: { 0: 6, 7: 4 } },
+  { iso: "2026-10-03", date: "10월 3일", folder: "속초 여행", count: 9,  best: [2],    groups: { 2: 5 } },
+  { iso: "2026-09-27", date: "9월 27일", folder: "동아리 MT", count: 10, best: [1, 6], groups: { 1: 4, 6: 3 } },
+  { iso: "2026-09-14", date: "9월 14일", folder: "롯데월드",  count: 6,  best: [3],    groups: { 3: 3 } },
+];
+const people = [
+  { name: "승은", n: 128, me: true }, { name: "지민", n: 96 }, { name: "서연", n: 74 },
+  { name: "하준", n: 61 }, { name: "유나", n: 38 },
+];
+const places = [
+  { name: "속초 영금정", sub: "강원 속초시", n: 142 },
+  { name: "대성리 MT촌", sub: "경기 가평군", n: 186 },
+  { name: "롯데월드 어드벤처", sub: "서울 송파구", n: 73 },
+];
+const chipList = [
+  ["all", "전체"], ["best", "AI 추천만"], ["folder", "폴더별"], ["people", "사람별"], ["place", "장소별"],
+];
+
+/* ---------- 앱 상태 ---------- */
+let screenName = "home";
+const states = { home: "default", photos: "default", album: "default", menu: "default", fset: "owner", create: "default", notif: "default", profile: "default", pedit: "default", share: "default", cluster: "default", review: "default" };
+const stateLabels = {
+  home:   [["default","기본"],["loading","로딩"],["empty","비어 있음"],["error","불러오기 실패"]],
+  photos: [["default","기본"],["loading","로딩"],["empty","비어 있음"],["noresult","필터 결과 없음"],["error","불러오기 실패"]],
+  album:  [["default","기본"],["loading","로딩"],["empty","비어 있음"],["nogroup","비슷한 묶음 없음"],["error","불러오기 실패"]],
+  menu:   [["default","기본"],["limited","사진 권한 일부만 허용"]],
+  fset:   [["owner","방장으로 보기"],["member","참여자로 보기"]],
+  create: [["default","기본"],["fail","만들기 실패"]],
+  notif:  [["default","기본"],["empty","알림 없음"]],
+  profile:[["default","기본"]],
+  pedit:  [["default","기본"]],
+  share:  [["default","기본"],["expired","링크 만료됨"]],
+  cluster:[["default","기본"]],
+  review: [["default","기본"]],
+};
+const screenTitles = { home: "홈", photos: "전체 사진", album: "공유 앨범", menu: "메뉴", fset: "폴더 설정", create: "폴더 만들기", notif: "알림", profile: "프로필", pedit: "프로필 수정", share: "링크·QR 공유", cluster: "AI 분류", review: "추천 확인" };
+let suggestOpen = true;
+let chip = "all";
+let calOpen = false;
+let calY = 2026, calM = 9;      // 0부터 시작하는 월 (9 = 10월)
+let pickedDate = null;
+const TODAY = "2026-10-10";
+
+const screen = document.getElementById("screen");
+const switcher = document.getElementById("switcher");
+
+/* ---------- 홈 ---------- */
+const header = () => `
+  <header class="top sticky">
+    <div class="brand" aria-label="서비스 이름 자리">서비스명</div>
+    <div class="top-icons">
+      <button class="icon-btn" type="button" aria-label="알림${unreadCount() ? ` (안 읽은 알림 ${unreadCount()}개)` : ""}" data-notif>
+        <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+        ${unreadCount() ? '<span class="dot"></span>' : ""}
+      </button>
+      <button class="avatar" type="button" aria-label="프로필" data-profile>${me.name[0]}</button>
+    </div>
+  </header>
+  <h1 class="greet">오늘도 좋은 순간<br>함께해요</h1>`;
+
+const createBtn = `
+  <button class="create" type="button" data-create>
+    <span><small>모임 시작 전에 만들어 두세요</small><strong>새 공유 폴더<br>만들기</strong></span>
+    <span class="plus"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>
+  </button>`;
+
+function folderCard(f, i) {
+  const extra = f.extra ? `<span>+${f.extra}</span>` : "";
+  return `
+    <button class="folder" type="button" data-album="${i}">
+      <div class="thumb">${f.live ? '<span class="badge"><i></i>수집 중</span>' : ""}</div>
+      <div class="f-name">${f.name}</div>
+      <div class="f-meta">
+        <span>${f.date} · ${f.photos}장</span>
+        <span class="faces">${f.members.map(m => `<span>${m}</span>`).join("")}${extra}</span>
+      </div>
+    </button>`;
+}
+
+const errorBlock = `
+  <div class="center-state">
+    <div class="err-icon"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5v.01"/><circle cx="12" cy="12" r="9"/></svg></div>
+    <h3>사진을 불러오지 못했어요</h3>
+    <p>인터넷 연결을 확인한 뒤<br>다시 시도해 주세요.</p>
+    <button class="btn btn-primary" type="button" data-retry>다시 시도</button>
+  </div>`;
+
+const homeViews = {
+  default: () => `
+    ${header()}
+    ${createBtn}
+    ${suggestOpen ? `
+    <section class="suggest" aria-label="공유 폴더 제안">
+      <p>오늘 사진을 <b>32장</b> 찍었어요.<br>공유 폴더로 만들까요?</p>
+      <div class="suggest-actions">
+        <button class="btn btn-primary" type="button" data-create="suggest">만들기</button>
+        <button class="btn btn-ghost" type="button" data-close>닫기</button>
+      </div>
+    </section>` : ""}
+    <section class="section">
+      <div class="section-head"><h2>내 폴더</h2><span>${folders.length}개</span></div>
+      <div class="grid">${folders.map(folderCard).join("")}</div>
+    </section>`,
+
+  loading: () => `
+    ${header()}
+    ${createBtn}
+    <section class="section" aria-busy="true" aria-label="폴더 불러오는 중">
+      <div class="section-head"><h2>내 폴더</h2><span>불러오는 중…</span></div>
+      <div class="grid">
+        ${Array.from({length: 4}).map(() => `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="sk" style="aspect-ratio:1/1;border-radius:14px"></div>
+            <div class="sk" style="height:14px;width:70%"></div>
+            <div class="sk" style="height:12px;width:50%"></div>
+          </div>`).join("")}
+      </div>
+    </section>`,
+
+  empty: () => `
+    ${header()}
+    <div class="center-state">
+      <div class="illust">일러스트 자리</div>
+      <h3>친구와 사진을 공유해 보세요</h3>
+      <p>공유 폴더를 만들고 링크를 보내면<br>모두의 사진이 한곳에 모여요.</p>
+      <button class="btn btn-primary" type="button" data-create>공유 폴더 만들기</button>
+    </div>`,
+
+  error: () => `${header()}${errorBlock}`,
+};
+
+/* ---------- 전체 사진 ---------- */
+function photosHeader(countText) {
+  if (selecting) return `<header class="a-bar sel-top">${selTop()}</header>`;
+  return `
+    <header class="p-top">
+      <div>
+        <h1>전체 사진</h1>
+        <div class="count">${countText}</div>
+      </div>
+      <div class="p-actions">
+        <button class="cal-btn" type="button" data-cal aria-expanded="${calOpen}" aria-label="${pickedDate ? `날짜로 찾기, ${labelOf(pickedDate)} 선택됨` : "날짜로 찾기"}">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>${pickedDate ? '<span class="on"></span>' : ""}
+        </button>
+        <button class="icon-btn" type="button" data-opts="photos" aria-label="옵션">${svg.more}</button>
+      </div>
+    </header>`;
+}
+
+function chipsBar(disabled) {
+  return `
+    <div class="chips" role="group" aria-label="사진 필터">
+      ${chipList.map(([k, label]) => `<button class="chip" type="button" data-chip="${k}" aria-pressed="${chip === k}" ${disabled ? "disabled" : ""}>${label}</button>`).join("")}
+    </div>`;
+}
+
+const expanded = new Set();   // 펼친 묶음 id
+
+const stackIcon = '<svg viewBox="0 0 24 24"><rect x="7" y="7" width="13" height="13" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/></svg>';
+
+/* 선택 모드 · 비슷한 사진 삭제 */
+let selecting = false;
+const selected = new Set();
+const deleted = new Set();          // 휴지통으로 옮긴 사진 id
+let trashCount = 12;
+const isMine = (di, idx) => (di + idx) % 2 === 1;   // 더미: 내가 올린 사진
+const ownedByMe = id => {
+  if (id.startsWith("m")) return true;                 // 내 사진 탭
+  const [di, idx] = id.slice(1).split("-").map(Number);
+  return isMine(di, idx);
+};
+const checkMark = '<span class="check"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>';
+const selAttr = id => selecting ? `aria-pressed="${selected.has(id)}"` : "";
+const leftKs = (prefix, di, i, size) => [...Array(size).keys()].filter(k => !deleted.has(`${prefix}${di}-${i + k}`));
+const deletedIn = (prefix, di) => [...deleted].filter(id => id.startsWith(`${prefix}${di}-`)).length;
+
+function dedupeCandidates(prefix) {
+  const list = prefix === "p" ? days : albumDays;
+  const mine = [], others = [];
+  list.forEach((d, di) => Object.entries(d.groups).forEach(([i0, size]) => {
+    const i = Number(i0), gid = `${prefix}${di}-${i}`;
+    const ks = leftKs(prefix, di, i, size);
+    const pick = ks.includes(bestPick[gid] || 0) ? (bestPick[gid] || 0) : ks[0];
+    for (let k = 0; k < size; k++) {
+      const id = `${prefix}${di}-${i + k}`;
+      if (k === pick || deleted.has(id)) continue;
+      (isMine(di, i + k) ? mine : others).push(id);
+    }
+  }));
+  return { mine, others };
+}
+
+function photoTile(id, opts = {}) {
+  const { size = 0, open = false, isBest = false, member = false, gid = "", solo = false } = opts;
+  if (solo) return `
+    <button class="ph" type="button" data-photo="${id}" ${selAttr(id)} aria-label="사진 (AI 추천)">
+      <span class="best">BEST</span>${selecting ? checkMark : ""}
+    </button>`;
+  const cls = ["ph", open ? "in-group" : "", open && isBest ? "lead" : "", member ? "member" : ""].join(" ");
+  const attrs = [
+    isBest ? `data-group="${gid}" aria-expanded="${open}"` : "",
+    member ? `data-member="${id}" data-grp="${gid}"` : "",
+  ].join(" ");
+  return `
+    <button class="${cls}" type="button" data-photo="${id}" ${attrs} ${selAttr(id)} aria-label="사진${isBest ? ` (AI 추천, 비슷한 사진 ${size}장 묶음)` : ""}">
+      ${isBest ? '<span class="best">BEST</span>' : ""}
+      ${isBest ? `<span class="stack">${stackIcon}<b>${size}장</b></span>` : ""}
+      ${selecting ? checkMark : ""}
+    </button>`;
+}
+
+function dayGroups(onlyBest) {
+  return days.map((d, di) => {
+    const tiles = [];
+    for (let i = 0; i < d.count; i++) {
+      const size = d.groups[i];
+      const gid = `p${di}-${i}`;
+      if (size) {
+        const ks = leftKs("p", di, i, size);
+        const open = expanded.has(gid) && !selecting;
+        const pick = ks.includes(bestPick[gid] || 0) ? (bestPick[gid] || 0) : ks[0];
+        if (!ks.length) {
+          // 묶음 전체를 지운 경우
+        } else if (ks.length === 1) {
+          tiles.push(photoTile(`p${di}-${i + ks[0]}`, { solo: true }));
+        } else if (open) {
+          for (const k of ks) {
+            const isBest = k === pick;
+            tiles.push(photoTile(`p${di}-${i + k}`, { size: ks.length, open, isBest, member: !isBest, gid }));
+          }
+        } else {
+          tiles.push(photoTile(`p${di}-${i + pick}`, { size: ks.length, isBest: true, gid }));
+        }
+        i += size - 1;
+      } else if (!onlyBest && !deleted.has(gid)) {
+        tiles.push(photoTile(gid));
+      }
+    }
+    if (!tiles.length) return "";
+    const shown = onlyBest ? `추천 ${Object.keys(d.groups).length}장` : `${d.count - deletedIn("p", di)}장`;
+    return `
+      <section class="day${pickedDate === d.iso ? " hl" : ""}" id="day-${d.iso}">
+        <div class="day-head">${d.date}<span>· ${d.folder} · ${shown}</span></div>
+        <div class="pgrid">${tiles.join("")}</div>
+      </section>`;
+  }).join("");
+}
+
+function chipBody() {
+  if (chip === "all")  return dayGroups(false);
+  if (chip === "best") return dayGroups(true);
+  if (chip === "folder") return `<div class="list">${folders.map((f, i) => `
+    <button class="row" type="button" data-album="${i}">
+      <span class="row-thumb"></span>
+      <span class="row-body"><b>${f.name}</b><span>${f.date} · ${f.photos}장</span></span>
+      <span class="row-arrow">›</span>
+    </button>`).join("")}</div>`;
+  if (chip === "people") return `<div class="list">${people.map(p => `
+    <button class="row" type="button" data-cgrid="photos|people|${p.name}">
+      <span class="row-face">${p.name[0]}</span>
+      <span class="row-body"><b>${p.name}${p.me ? '<span class="me">나</span>' : ""}</b><span>사진 ${p.n}장</span></span>
+      <span class="row-arrow">›</span>
+    </button>`).join("")}</div>`;
+  if (chip === "place") return `<div class="list">${places.map(p => `
+    <button class="row" type="button" data-cgrid="photos|places|${p.name}">
+      <span class="row-pin"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg></span>
+      <span class="row-body"><b>${p.name}</b><span>${p.sub} · ${p.n}장</span></span>
+      <span class="row-arrow">›</span>
+    </button>`).join("")}</div>`;
+}
+
+const pad = n => String(n).padStart(2, "0");
+function labelOf(iso) { const [, m, d] = iso.split("-").map(Number); return `${m}월 ${d}일`; }
+
+function calendar() {
+  const has = new Set(days.map(d => d.iso));
+  const first = new Date(calY, calM, 1).getDay();
+  const last = new Date(calY, calM + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < first; i++) cells.push("<span></span>");
+  for (let d = 1; d <= last; d++) {
+    const iso = `${calY}-${pad(calM + 1)}-${pad(d)}`;
+    const cls = ["cal-day", has.has(iso) ? "has" : "", iso === TODAY ? "today" : ""].join(" ");
+    cells.push(`<button class="${cls}" type="button" data-day="${iso}" aria-pressed="${pickedDate === iso}" aria-label="${calM + 1}월 ${d}일${has.has(iso) ? ", 사진 있음" : ""}"><span>${d}</span></button>`);
+  }
+  return `
+    <section class="cal" aria-label="날짜로 사진 찾기">
+      <div class="cal-head">
+        <b>${calY}년 ${calM + 1}월</b>
+        <div class="cal-nav">
+          <button type="button" data-month="-1" aria-label="이전 달">‹</button>
+          <button type="button" data-month="1" aria-label="다음 달">›</button>
+        </div>
+      </div>
+      <div class="cal-grid">
+        ${["일","월","화","수","목","금","토"].map(w => `<span class="cal-wd">${w}</span>`).join("")}
+        ${cells.join("")}
+      </div>
+      <div class="cal-note"><i></i>사진이 있는 날에는 그날 찍은 사진이 보여요</div>
+    </section>`;
+}
+
+const photoViews = {
+  default: () => selecting
+    ? `<div class="sticky p-sticky">${photosHeader()}${chipsBar(false)}</div>${chipBody()}`
+    : `<div class="sticky p-sticky">${photosHeader(`${TOTAL}장 · 폴더 ${folders.length}개`)}${chipsBar(false)}</div>${chipBody()}`,
+
+  loading: () => `
+    <div class="sticky p-sticky">${photosHeader("불러오는 중…")}${chipsBar(true)}</div>
+    <section class="day" aria-busy="true" aria-label="사진 불러오는 중">
+      <div class="sk" style="height:14px;width:40%"></div>
+      <div class="pgrid">${Array.from({length: 12}).map(() => '<div class="sk" style="aspect-ratio:1/1;border-radius:0"></div>').join("")}</div>
+    </section>`,
+
+  empty: () => `
+    <div class="sticky p-sticky">${photosHeader("0장")}</div>
+    <div class="center-state">
+      <div class="illust">일러스트 자리</div>
+      <h3>아직 공유받은 사진이 없어요</h3>
+      <p>공유 폴더를 만들거나 친구의 링크로 참여하면<br>사진이 여기에 모여요.</p>
+      <button class="btn btn-primary" type="button" data-create>공유 폴더 만들기</button>
+    </div>`,
+
+  noresult: () => `
+    <div class="sticky p-sticky">${photosHeader(`${TOTAL}장 · 폴더 ${folders.length}개`)}${chipsBar(false)}</div>
+    <div class="center-state">
+      <div class="search-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div>
+      <h3>이 조건에 맞는 사진이 없어요</h3>
+      <p>다른 필터를 고르거나<br>필터를 초기화해 보세요.</p>
+      <button class="btn btn-line" type="button" data-reset>필터 초기화</button>
+    </div>`,
+
+  error: () => `<div class="sticky p-sticky">${photosHeader("")}${chipsBar(true)}</div>${errorBlock}`,
+};
+
+/* ---------- 공유 앨범 ---------- */
+let albumIdx = 0;
+let albumTab = "all";            // all | best | mine
+let openGroup = null;            // 펼친 묶음 id (한 번에 하나)
+const bestPick = {};             // 묶음 id → BEST로 지정한 컷 위치(0 = 원래 추천)
+let dl = { running: false, n: 0, timer: null };
+
+const albumMembers = ["지", "민", "서", "하"];   // + 2명 = 6명
+// 시간대 묶음: count장, groups = { 시작 위치: 묶음 장수 }, reasons = AI 추천 이유
+const albumDays = [
+  { head: "10월 4일 오후", count: 11, groups: { 0: 6, 7: 3 }, reasons: { 0: "모두 눈을 뜨고 있어요", 7: "가장 선명해요" } },
+  { head: "10월 4일 오전", count: 8,  groups: { 2: 4 },       reasons: { 2: "표정이 가장 자연스러워요" } },
+  { head: "10월 3일 저녁", count: 9,  groups: { 0: 5, 6: 3 }, reasons: { 0: "흔들림이 없어요", 6: "모두 화면 안에 들어왔어요" } },
+];
+const groupCount = albumDays.reduce((n, d) => n + Object.keys(d.groups).length, 0);
+
+const svg = {
+  back:  '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
+  share: '<svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
+  more:  '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></svg>',
+  down:  '<svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>',
+};
+const sizeOf = n => { const mb = n * 5.6; return mb >= 1000 ? `약 ${(mb / 1000).toFixed(1)}GB` : `약 ${Math.round(mb)}MB`; };
+
+function dlLabel(total) {
+  return dl.running
+    ? `<span class="fill" style="width:${Math.round(dl.n / total * 100)}%"></span><span>저장 중 ${dl.n}/${total}</span>`
+    : `${svg.down}<span>전체 다운로드 · ${total}장</span>`;
+}
+
+function albumHeader(opts = {}) {
+  const f = folders[albumIdx];
+  const { count = `${f.photos}장`, showDl = true, tabs = true, tabsDisabled = false, info = true } = opts;
+  const dlButton = (cls = "") => `<button class="dl-btn ${cls}" type="button" data-dl ${dl.running ? "disabled" : ""}>${dlLabel(f.photos)}</button>`;
+  return `
+    <div class="sticky a-sticky">
+      ${selecting ? `<div class="a-bar sel-top">${selTop()}</div>` : `
+      <div class="a-bar">
+        <button class="icon-btn" type="button" data-back aria-label="뒤로 가기">${svg.back}</button>
+        <h1>${f.name}</h1>
+        <div class="a-actions">
+          <button class="icon-btn" type="button" aria-label="링크·QR 공유" data-share>${svg.share}</button>
+          <button class="icon-btn" type="button" aria-label="옵션" data-opts="album">${svg.more}</button>
+        </div>
+      </div>`}
+      ${showDl && !selecting ? `<div class="sticky-dl">${dlButton()}</div>` : ""}
+    </div>
+    ${info ? `<div class="a-cover" role="img" aria-label="${f.name} 대표 사진">${photoGlyph}<span class="cover-tag">대표 사진</span></div>` : ""}
+    <div class="a-body">
+      ${info ? `
+      <div class="a-info">
+        <div class="a-meta"><span>${f.date}</span><span>·</span><b>${count}</b>${f.live ? `<span class="live"><i></i>${f.isNew ? "수집 중" : "수집 중 · 5시간 남음"}</span>` : ""}</div>
+        <div class="a-people">
+          <span class="faces lg">${f.isNew ? "<span>승</span>" : `${albumMembers.map(m => `<span>${m}</span>`).join("")}<span class="more">+2</span>`}</span>
+        </div>
+      </div>` : ""}
+      ${showDl ? dlButton("dl-inflow") : ""}
+      ${tabs ? `
+      <div class="a-tabs" role="tablist">
+        ${[["all","전체"],["best","AI 추천"],["mine","내 사진"]].map(([k, l]) =>
+          `<button class="a-tab" type="button" role="tab" data-atab="${k}" aria-selected="${albumTab === k}" ${tabsDisabled ? "disabled" : ""}>${l}</button>`).join("")}
+      </div>` : ""}
+    </div>`;
+}
+
+function aTile(id, o = {}) {
+  const { best = false, size = 0, group = "", member = false, inGroup = false, lead = false, solo = false } = o;
+  if (solo) return `
+    <button class="ph" type="button" data-photo="${id}" ${selAttr(id)} aria-label="사진 (AI 추천)">
+      <span class="best">BEST</span>${selecting ? checkMark : ""}
+    </button>`;
+  const cls = ["ph", inGroup ? "in-group" : "", lead ? "lead" : "", member ? "member" : ""].join(" ");
+  const attrs = [
+    `data-photo="${id}"`,
+    group && !member ? `data-agroup="${group}"` : "",
+    member ? `data-member="${id}" data-grp="${group}"` : "",
+  ].join(" ");
+  return `
+    <button class="${cls}" type="button" ${attrs} ${selAttr(id)} aria-label="사진${best ? ` (AI 추천, 비슷한 사진 ${size}장 묶음)` : ""}">
+      ${best ? '<span class="best">BEST</span>' : ""}
+      ${best ? `<span class="stack">${stackIcon}<b>${size}장</b></span>` : ""}
+      ${selecting ? checkMark : ""}
+    </button>`;
+}
+
+function albumAll(grouped) {
+  return albumDays.map((d, di) => {
+    const tiles = [];
+    for (let i = 0; i < d.count; i++) {
+      const size = grouped ? d.groups[i] : 0;
+      if (!size) { if (!deleted.has(`a${di}-${i}`)) tiles.push(aTile(`a${di}-${i}`)); continue; }
+      const gid = `a${di}-${i}`;
+      const ks = leftKs("a", di, i, size);
+      const pick = ks.includes(bestPick[gid] || 0) ? (bestPick[gid] || 0) : ks[0];
+      if (!ks.length) {
+        // 묶음 전체를 지운 경우
+      } else if (ks.length === 1) {
+        tiles.push(aTile(`a${di}-${i + ks[0]}`, { solo: true }));
+      } else if (openGroup === gid && !selecting) {
+        for (const k of ks) {
+          const isBest = k === pick;
+          tiles.push(aTile(`a${di}-${i + k}`, { best: isBest, size: ks.length, group: gid, inGroup: true, lead: isBest, member: !isBest }));
+        }
+      } else {
+        tiles.push(aTile(`a${di}-${i + pick}`, { best: true, size: ks.length, group: gid }));
+      }
+      i += size - 1;
+    }
+    return `
+      <section class="day">
+        <div class="day-head">${d.head}<span>· ${d.count - deletedIn("a", di)}장</span></div>
+        <div class="pgrid">${tiles.join("")}</div>
+      </section>`;
+  }).join("");
+}
+
+function albumBest() {
+  const cards = [];
+  albumDays.forEach((d, di) => Object.keys(d.groups).forEach(k => {
+    const ks = leftKs("a", di, Number(k), d.groups[k]);
+    const size = ks.length;
+    if (!size) return;
+    const gid = `a${di}-${k}`;
+    const pick = ks.includes(bestPick[gid] || 0) ? (bestPick[gid] || 0) : ks[0];
+    cards.push(`
+      <button class="ai-card" type="button" data-view="a${di}-${Number(k) + pick}">
+        <span class="ph" style="display:block">
+          <span class="best">BEST</span>
+          ${size > 1 ? `<span class="stack">${stackIcon}<b>${size}장</b></span>` : ""}
+        </span>
+        <p>${d.reasons[k]}</p>
+        <small>${d.head} · ${size > 1 ? `${size}장 중 1장` : "비슷한 사진 정리됨"}</small>
+      </button>`);
+  }));
+  return `
+    ${myFaceBlock()}
+    <div class="section-head"><h2>AI가 고른 베스트샷</h2><span>${cards.length}장</span></div>
+    <div class="ai-grid">${cards.join("")}</div>`;
+}
+
+/* AI 추천 탭: 내 얼굴이 나온 사진 묶음 (메뉴의 얼굴 인식 설정을 따른다) */
+function myFaceBlock() {
+  if (!settings.face) return `
+    <section class="mf-off">
+      <b>내 얼굴이 나온 사진만 모아 볼까요?</b>
+      <p>얼굴 인식을 켜면 이 앨범에서 내가 나온 사진을 찾아 드려요. 얼굴 정보는 이 휴대폰 안에서만 처리해요.</p>
+      <button type="button" data-faceon>얼굴 인식 켜기</button>
+    </section>`;
+  const total = meSplit.reduce((a, x) => a + x.n, 0);
+  return `
+    <section class="mf">
+      <div class="section-head"><h2>내 얼굴이 나왔어요</h2><span>${total}장</span></div>
+      <div class="ai-grid">
+        ${meSplit.map(x => `
+          <button class="ai-card" type="button" data-cgrid="album|me|${x.name}">
+            <span class="ph" style="display:block"><span class="stack">${stackIcon}<b>${x.n}장</b></span></span>
+            <p>${x.name}</p>
+          </button>`).join("")}
+      </div>
+    </section>`;
+}
+
+function albumMine() {
+  return albumDays.map((d, di) => {
+    const idx = Array.from({ length: d.count }, (_, i) => i).filter(i => i % 3 === 1 && !deleted.has(`m${di}-${i}`));
+    return `
+      <section class="day">
+        <div class="day-head">${d.head}<span>· 내가 찍은 ${idx.length}장</span></div>
+        <div class="pgrid">${idx.map(i => aTile(`m${di}-${i}`)).join("")}</div>
+      </section>`;
+  }).join("");
+}
+
+function albumBody(grouped) {
+  if (albumTab === "best") {
+    if (!grouped) return `
+      <div class="center-state">
+        <div class="search-icon">${stackIcon.replace('<svg', '<svg style="stroke:var(--fg)"')}</div>
+        <h3>비슷한 사진 묶음이 없어요</h3>
+        <p>사진이 모두 달라서 추천할 컷이 없어요.<br>전체 탭에서 모든 사진을 볼 수 있어요.</p>
+        <button class="btn btn-line" type="button" data-atab="all">전체 사진 보기</button>
+      </div>`;
+    return albumBest();
+  }
+  if (albumTab === "mine") return albumMine();
+  return albumAll(grouped);
+}
+
+const albumViews = {
+  default: () => `${albumHeader()}${albumBody(true)}`,
+  nogroup: () => `${albumHeader()}${albumBody(false)}`,
+  loading: () => `
+    ${albumHeader({ count: "불러오는 중…", showDl: false, tabsDisabled: true })}
+    <section class="day" aria-busy="true" aria-label="사진 불러오는 중">
+      <div class="sk" style="height:14px;width:40%"></div>
+      <div class="pgrid">${Array.from({ length: 12 }).map(() => '<div class="sk" style="aspect-ratio:1/1;border-radius:0"></div>').join("")}</div>
+    </section>`,
+  empty: () => `
+    ${albumHeader({ count: "0장", showDl: false, tabs: false })}
+    <div class="center-state">
+      <div class="illust">일러스트 자리</div>
+      <h3>아직 올라온 사진이 없어요</h3>
+      <p>링크를 보내 친구들을 초대하면<br>모두가 찍은 사진이 여기에 모여요.</p>
+      <button class="btn btn-primary" type="button" data-share>링크 공유하기</button>
+    </div>`,
+  error: () => `${albumHeader({ showDl: false, tabs: false, info: false })}${errorBlock}`,
+};
+
+let albumFrom = "home";
+function openAlbum(i) {
+  if (["home", "photos", "profile", "menu", "notif", "cluster"].includes(screenName)) albumFrom = screenName;
+  albumIdx = i; albumTab = "all"; openGroup = null; exitSelect();
+  stopDl();
+  screenName = "album";
+  render();
+}
+
+function renderAlbumChrome() {
+  const phone = document.getElementById("phone");
+  const inAlbum = screenName === "album";
+  const st = states.album;
+  const aiBar = inAlbum && albumTab === "best" && (st === "default");
+  phone.classList.toggle("in-album", inAlbum);
+  phone.classList.toggle("in-menu", screenName === "menu");
+  phone.classList.toggle("in-fset", screenName === "fset" || screenName === "share" || screenName === "cluster" || screenName === "review");
+  phone.classList.toggle("in-create", screenName === "create");
+  phone.classList.toggle("in-notif", screenName === "notif");
+  phone.classList.toggle("in-profile", screenName === "profile" || screenName === "pedit");
+  phone.classList.toggle("f-editing", screenName === "menu" && menuSub === "friends" && fEdit);
+  const cta = document.getElementById("cCta");
+  if (cta) cta.remove();
+  if (screenName === "create") phone.insertAdjacentHTML("beforeend", createCta());
+  phone.classList.toggle("ai-bar", aiBar);
+  document.getElementById("aiBar").hidden = !aiBar;
+  if (aiBar) document.querySelector("[data-aisave]").textContent = `추천 사진 ${groupCount}장 원본으로 저장`;
+  const fab = document.getElementById("fab");
+  fab.hidden = inAlbum && (st === "error" || st === "loading");
+  fab.setAttribute("aria-label", inAlbum ? "내 사진 추가" : "새 공유 앨범 만들기");
+  fab.dataset.msg = inAlbum ? "사진 추가 화면은 아직 만들지 않았어요" : "폴더 만들기 화면은 아직 만들지 않았어요";
+  updateSelbar();
+}
+
+const allVisibleSelected = () => {
+  const ids = [...screen.querySelectorAll("[data-photo]")].map(el => el.dataset.photo);
+  return ids.length > 0 && ids.every(id => selected.has(id));
+};
+
+function selTop() {
+  return `
+    <button class="icon-btn selall-ic" type="button" data-selall id="selAllIc" aria-pressed="false" aria-label="전체 선택">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="m8 12.5 3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h1><button type="button" data-selall>전체 선택</button></h1>
+    <button class="text-link" type="button" data-selcancel>취소</button>`;
+}
+
+function updateSelbar() {
+  const on = selecting && (screenName === "photos" || screenName === "album");
+  document.getElementById("phone").classList.toggle("selecting-on", on);
+  screen.classList.toggle("selecting", on);
+  document.getElementById("selbar").hidden = !on;
+  document.getElementById("selDel").disabled = selected.size === 0;
+  document.getElementById("selSave").disabled = selected.size === 0;
+  const ic = document.getElementById("selAllIc");
+  if (ic) ic.setAttribute("aria-pressed", String(allVisibleSelected()));
+}
+function exitSelect() { selecting = false; selected.clear(); }
+
+function optionsSheet(where) {
+  return `
+    <h3>사진 정리</h3>
+    <div class="opt-list">
+      <button class="opt" type="button" data-opt="select">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></svg>
+        <span><b>선택</b><small>여러 장을 골라 한 번에 저장하거나 공유해요</small></span>
+      </button>
+      <button class="opt" type="button" data-opt="dedupe">
+        ${stackIcon}
+        <span><b>BEST컷 외 비슷한 사진 삭제</b><small>묶음마다 BEST컷 1장만 남기고 정리해요</small></span>
+      </button>
+      ${where === "album" ? `
+      <button class="opt" type="button" data-opt="fset">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+        <span><b>폴더 설정</b><small>수집 기간, 링크, 참여자 관리</small></span>
+      </button>
+      ${folders[albumIdx] && folders[albumIdx].owner ? `
+      <button class="opt" type="button" data-opt="delfolder">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
+        <span><b>폴더 삭제</b><small>내가 만든 폴더예요. 모든 참여자의 앨범에서 사라져요</small></span>
+      </button>` : `
+      <button class="opt" type="button" data-opt="leavefolder">
+        <svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"/></svg>
+        <span><b>폴더 나가기</b><small>친구가 만든 폴더라 삭제는 만든 사람만 할 수 있어요</small></span>
+      </button>`}` : ""}
+    </div>
+    <button class="btn btn-soft btn-block" type="button" data-sheetclose>닫기</button>`;
+}
+
+/* 바텀 시트 */
+function openSheet(html) {
+  document.getElementById("sheetBody").innerHTML = html;
+  document.getElementById("sheet").hidden = false;
+}
+function closeSheet() { document.getElementById("sheet").hidden = true; }
+
+function startDl() {
+  const total = folders[albumIdx].photos;
+  dl = { running: true, n: 0, timer: null };
+  const step = Math.max(1, Math.round(total / 40));
+  dl.timer = setInterval(() => {
+    dl.n = Math.min(total, dl.n + step);
+    const btns = screen.querySelectorAll(".dl-btn");
+    btns.forEach(b => { b.disabled = true; b.innerHTML = dlLabel(total); });
+    if (dl.n >= total) {
+      stopDl();
+      btns.forEach(b => { b.disabled = false; b.innerHTML = dlLabel(total); });
+      toast(`${total}장을 저장했어요`);
+    }
+  }, 70);
+}
+function stopDl() { clearInterval(dl.timer); dl = { running: false, n: 0, timer: null }; }
+
+/* 길게 누르기 → BEST로 지정 */
+let pressTimer = null, longPressed = false;
+document.addEventListener("pointerdown", e => {
+  if (selecting || !(screenName === "photos" || screenName === "album")) return;
+  const t = e.target.closest("[data-member]");
+  const ph = e.target.closest("[data-photo]");
+  if (!t && ph) {
+    // 일반 사진을 꾹 누르면 선택 모드로 들어가고 그 사진을 고른다
+    longPressed = false;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      longPressed = true;
+      selecting = true; selected.clear(); selected.add(ph.dataset.photo);
+      expanded.clear(); openGroup = null;
+      if (screenName === "photos" && chip !== "all" && chip !== "best") chip = "all";
+      render(true);
+      if (navigator.vibrate) navigator.vibrate(15);
+    }, 500);
+    return;
+  }
+  if (!t) return;
+  longPressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    longPressed = true;
+    const [di, i] = t.dataset.member.slice(1).split("-").map(Number);
+    const [, gi] = t.dataset.grp.slice(1).split("-").map(Number);
+    openSheet(`
+      <h3>이 컷을 BEST로 지정할까요?</h3>
+      <p>묶음을 접으면 이 사진이 대표로 보여요.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-setbest="${t.dataset.grp}:${i - gi}">BEST로 지정</button>
+      </div>`);
+  }, 500);
+});
+// 길게 누른 뒤 손을 뗄 때 생기는 클릭 한 번만 무시한다
+let suppressClickUntil = 0;
+["pointerup", "pointerleave", "pointercancel"].forEach(ev =>
+  document.addEventListener(ev, () => {
+    clearTimeout(pressTimer);
+    if (longPressed) { longPressed = false; suppressClickUntil = Date.now() + 250; }
+  }));
+document.addEventListener("contextmenu", e => { if (e.target.closest("[data-photo]")) e.preventDefault(); });
+
+/* ---------- 메뉴 ---------- */
+let menuSub = null;   // null | upload | notify | perm
+const settings = {
+  findByPhone: true,
+  wifiOnly: true,
+  exSolo: false, exBlur: true, exShot: true, exVideo: false, exBestOnly: false, aiRules: [],
+  nStart: true, nUpload: true, nAi: true,
+  face: true,
+};
+const ic = {
+  user:  '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+  up:    '<svg class="ic" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/></svg>',
+  bell:  '<svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
+  shield:'<svg class="ic" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>',
+  trash: '<svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  cloud: '<svg class="ic" viewBox="0 0 24 24"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19 10a4 4 0 0 1-1 8z"/></svg>',
+  help:  '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/></svg>',
+  doc:   '<svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg>',
+  photo: '<svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>',
+  face:  '<svg class="ic" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M9 10v1M15 10v1M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>',
+  warn:  '<svg viewBox="0 0 24 24"><path d="M12 9v4M12 16.5v.01"/><path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+};
+const sw = (key, label) => `<button class="switch" type="button" role="switch" data-toggle="${key}" aria-checked="${settings[key]}" aria-label="${label}"></button>`;
+const navRow = (key, icon, title, sub = "", val = "") => `
+  <button class="m-row" type="button" data-msub="${key}">
+    ${icon}<span class="txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>
+    ${val ? `<span class="val">${val}</span>` : ""}<span class="chev">›</span>
+  </button>`;
+const msgRow = (msg, icon, title, sub = "", val = "") => `
+  <button class="m-row" type="button" data-msg="${msg}">
+    ${icon}<span class="txt"><b>${title}</b>${sub}</span>
+    ${val ? `<span class="val">${val}</span>` : ""}<span class="chev">›</span>
+  </button>`;
+const toggleRow = (key, title, sub = "") => `
+  <div class="m-row"><span class="txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>${sw(key, title)}</div>`;
+
+const limited = () => states.menu === "limited";
+const photoPermText = () => limited() ? "일부만 허용" : "전체 허용";
+
+function subHead(title) {
+  return `
+    <div class="sticky m-head sub">
+      <button class="icon-btn" type="button" data-mback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>${title}</h1>
+    </div>`;
+}
+
+function menuMain() {
+  const enabledN = ["nStart", "nUpload", "nAi"].filter(k => settings[k]).length;
+  return `
+    <div class="sticky m-head"><h1>메뉴</h1></div>
+    ${limited() ? `
+    <div class="warn">${ic.warn}<div><b>사진이 자동으로 모이지 않고 있어요</b>사진 접근이 '일부만 허용'으로 되어 있어 새로 찍은 사진을 가져올 수 없어요.<br><button type="button" data-msub="perm">권한 확인하기</button></div></div>` : ""}
+
+    <p class="m-label">내 정보</p>
+    <section class="profile">
+      <span class="pic">${me.name[0]}</span>
+      <span class="who"><b>${me.name}</b><span>${me.phone}</span></span>
+      <button class="edit" type="button" data-profile="edit">프로필 수정</button>
+      <div class="find">
+        <div><b>전화번호로 나를 찾을 수 있게 하기</b><small>친구가 내 전화번호로 검색해서 공유 폴더에 초대할 수 있어요.</small></div>
+        ${sw("findByPhone", "전화번호로 나를 찾을 수 있게 하기")}
+      </div>
+    </section>
+
+    <div class="m-list">
+      ${navRow("friends", '<svg class="ic" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><circle cx="17" cy="9" r="2.8"/><path d="M16 14.2a5.5 5.5 0 0 1 5.5 5.8"/></svg>', "친구 목록", "공유 폴더를 함께 쓴 사람이 자동으로 모여요", `${visibleFriends().length}명`)}
+    </div>
+
+    <p class="m-label">설정</p>
+    <div class="m-list">
+      ${navRow("upload", ic.up, "업로드 설정", `${settings.wifiOnly ? "Wi-Fi에서만 업로드" : "모바일 데이터로도 업로드"} · 공유 옵션`)}
+      ${navRow("notify", ic.bell, "알림 설정", "", `${enabledN}개 켜짐`)}
+      ${navRow("perm", ic.shield, "이 앱이 사용하는 권한", `사진 ${photoPermText()} · 얼굴 인식 ${settings.face ? "사용" : "사용 안 함"}`)}
+    </div>
+
+    <p class="m-label">사진과 저장 공간</p>
+    <div class="m-list">
+      ${msgRow("휴지통 화면은 아직 만들지 않았어요", ic.trash, "휴지통", "<small>지운 사진은 30일 뒤 완전히 삭제돼요</small>", `${trashCount}장`)}
+      ${msgRow("드라이브 용량 화면은 아직 만들지 않았어요", ic.cloud, "드라이브 용량", `<small>15GB 중 3.2GB 사용</small><span class="meter" style="display:block"><i style="width:21%"></i></span>`)}
+    </div>
+
+    <p class="m-label">도움말과 약관</p>
+    <div class="m-list">
+      ${msgRow("고객센터 화면은 아직 만들지 않았어요", ic.help, "고객센터")}
+      ${msgRow("개인정보처리방침 화면은 아직 만들지 않았어요", ic.doc, "개인정보처리방침")}
+      ${msgRow("서비스 약관 화면은 아직 만들지 않았어요", ic.doc, "서비스 약관")}
+    </div>
+    <p class="m-foot">버전 0.1.0 (프로토타입)</p>`;
+}
+
+function menuUpload() {
+  return `
+    ${subHead("업로드 설정")}
+    <div class="m-list">
+      ${toggleRow("wifiOnly", "Wi-Fi에서만 업로드", "모바일 데이터를 쓰지 않고, Wi-Fi에 연결되면 모아서 올려요.")}
+    </div>
+    <p class="m-label">공유 옵션</p>
+    <p style="margin:-10px 0 -6px 4px;font-size:12px;color:var(--sub);line-height:1.5">새 공유 폴더를 만들 때 이 값이 기본으로 들어가요. 폴더마다 바꿀 수 있어요.</p>
+    <div class="m-list">
+      ${toggleRow("exSolo", "나만 나온 사진 제외", "나 혼자 찍힌 셀카나 독사진은 올리지 않아요.")}
+      ${toggleRow("exBlur", "흔들린 사진 제외")}
+      ${toggleRow("exShot", "스크린샷 제외")}
+      ${toggleRow("exVideo", "동영상 제외")}
+      ${toggleRow("exBestOnly", "비슷한 사진은 BEST컷만 올리기", "같은 장면을 여러 장 찍었으면 AI가 고른 BEST컷 1장만 올리고, 나머지는 내 휴대폰에만 남겨요.")}
+      ${aiRuleBlock("settings")}
+    </div>`;
+}
+
+function menuNotify() {
+  return `
+    ${subHead("알림 설정")}
+    <div class="m-list">
+      ${toggleRow("nStart", "수집 시작·종료", "공유 폴더의 사진 수집이 시작되거나 끝나면 알려줘요.")}
+      ${toggleRow("nUpload", "친구가 사진을 올렸을 때")}
+      ${toggleRow("nAi", "AI 추천이 끝났을 때", "베스트컷 고르기가 끝나면 바로 확인할 수 있어요.")}
+    </div>`;
+}
+
+function menuPerm() {
+  return `
+    ${subHead("이 앱이 사용하는 권한")}
+    ${limited() ? `<div class="warn">${ic.warn}<div><b>사진 접근을 '전체 허용'으로 바꿔 주세요</b>'일부만 허용'에서는 새로 찍은 사진이 공유 폴더에 자동으로 올라가지 않아요.</div></div>` : ""}
+    <div class="m-list">
+      <button class="m-row" type="button" data-msg="휴대폰 설정 앱으로 이동해요 (프로토타입에서는 이동하지 않아요)">
+        ${ic.photo}<span class="txt"><b>사진</b><small>수집 시간에 찍은 사진을 찾아 공유 폴더에 올릴 때 써요.</small></span>
+        <span class="status${limited() ? " off" : ""}">${photoPermText()}</span>
+      </button>
+      <button class="m-row" type="button" data-msg="휴대폰 설정 앱으로 이동해요 (프로토타입에서는 이동하지 않아요)">
+        ${ic.bell}<span class="txt"><b>알림</b><small>수집 시작·종료와 AI 추천 결과를 알려줄 때 써요.</small></span>
+        <span class="status">허용됨</span>
+      </button>
+      <div class="m-row">
+        ${ic.face}<span class="txt"><b>얼굴 인식</b><small>'내 사진' 모아보기에 써요. 얼굴 정보는 이 휴대폰 안에서만 처리해요.</small></span>
+        ${sw("face", "얼굴 인식 사용")}
+      </div>
+    </div>
+    <p style="margin:0 4px;font-size:12px;color:var(--sub);line-height:1.5">사진과 알림 권한은 휴대폰 설정에서 바꿀 수 있어요. 항목을 누르면 설정으로 이동해요.</p>`;
+}
+
+/* 친구 목록: 같은 폴더에 함께 있었던 사람이 자동으로 모인다 */
+const friends = [
+  { n: "지민", phone: "010-****-2231", last: "10월 4일", folders: ["속초 여행", "동아리 MT", "롯데월드"] },
+  { n: "민서", phone: "010-****-8820", last: "10월 4일", folders: ["속초 여행", "동아리 MT", "전시회"] },
+  { n: "서연", phone: "010-****-1145", last: "10월 4일", folders: ["속초 여행", "전시회"] },
+  { n: "하준", phone: "010-****-5072", last: "9월 27일", folders: ["동아리 MT", "롯데월드"] },
+  { n: "유나", phone: "010-****-3391", last: "9월 14일", folders: ["롯데월드"] },
+  { n: "성은", phone: "010-****-7710", last: "9월 27일", folders: ["동아리 MT"] },
+];
+const hiddenFriends = new Set();
+let friendQuery = "";
+const visibleFriends = () => friends.filter(f => !hiddenFriends.has(f.n));
+const sharedFolders = f => f.folders.filter(name => folders.some(x => x.name === name));
+
+function friendRows() {
+  const q = friendQuery.trim().replace(/-/g, "");
+  const list = visibleFriends()
+    .filter(f => !q || f.n.includes(q) || f.phone.replace(/-/g, "").includes(q))
+    .sort((a, b) => sharedFolders(b).length - sharedFolders(a).length);
+  if (!list.length) return `<p class="pf-empty">'${friendQuery}'와 맞는 사람이 없어요</p>`;
+  return list.map(f => fEdit ? `
+    <button class="f-row" type="button" data-fpick="${f.n}" aria-pressed="${fSel.has(f.n)}">
+      <span class="f-check">${'<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>'}</span>
+      <span class="f-face">${f.n[0]}</span>
+      <span class="txt"><b>${f.n}</b><small>함께한 폴더 ${sharedFolders(f).length}개 · 마지막 ${f.last}</small></span>
+    </button>` : `
+    <button class="f-row" type="button" data-msub="friend:${f.n}" data-fpress="${f.n}">
+      <span class="f-face">${f.n[0]}</span>
+      <span class="txt"><b>${f.n}</b><small>함께한 폴더 ${sharedFolders(f).length}개 · 마지막 ${f.last}</small></span>
+    </button>`).join("");
+}
+
+let fEdit = false;
+const fSel = new Set();
+function menuFriends() {
+  return `
+    ${fEdit ? `
+    <div class="sticky a-bar sel-top" style="margin-inline:0">
+      <button class="icon-btn selall-ic" type="button" data-fall aria-pressed="${visibleFriends().length > 0 && visibleFriends().every(f => fSel.has(f.n))}" aria-label="전체 선택">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="m8 12.5 3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <h1><button type="button" data-fall>${fSel.size ? `${fSel.size}명 선택` : "전체 선택"}</button></h1>
+      <button class="text-link" type="button" data-fcancel>취소</button>
+    </div>` : subHead("친구 목록")}
+    <div class="f-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input class="inp" id="fSearch" data-fsearch placeholder="이름이나 전화번호로 찾기" value="${friendQuery}" autocomplete="off">
+    </div>
+    <p class="f-note">같은 공유 폴더에 함께 있었던 사람이 자동으로 모여요. 함께한 폴더가 많은 순서예요.</p>
+    <div id="fList">${friendRows()}</div>
+    ${hiddenFriends.size && !fEdit ? `<p class="f-hidden">숨긴 사람 ${hiddenFriends.size}명 · <button type="button" data-funhide>다시 보이기</button></p>` : ""}
+    ${!fEdit ? '<p class="f-note" style="text-align:center">친구를 길게 누르면 여러 명을 골라 초대하거나 숨길 수 있어요.</p>' : ""}
+    ${fEdit ? `
+    <div class="selbar">
+      <button type="button" data-fhidesel ${fSel.size ? "" : "disabled"}><svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A9.8 9.8 0 0 1 12 5c5 0 9 4.5 10 7a12.6 12.6 0 0 1-3.2 4.2M6.6 6.6C4.3 8 2.7 10.2 2 12c1 2.5 5 7 10 7a9.6 9.6 0 0 0 4.4-1"/></svg>숨기기</button>
+      <button type="button" class="primary" data-finvsel ${fSel.size ? "" : "disabled"}><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M19 8v6M16 11h6"/></svg>초대</button>
+    </div>` : ""}`;
+}
+
+function menuFriend(name) {
+  const f = friends.find(x => x.n === name);
+  const shared = sharedFolders(f);
+  return `
+    ${subHead("")}
+    <section class="f-who">
+      <span class="f-face lg">${f.n[0]}</span>
+      <h2>${f.n}</h2>
+      <span>${f.phone} · 함께한 폴더 ${shared.length}개</span>
+    </section>
+    <div class="f-acts">
+      <button type="button" class="btn-strong" data-finvite="${f.n}">폴더에 초대하기</button>
+      <button type="button" class="btn-soft" data-fhide="${f.n}">숨기기</button>
+    </div>
+    <p class="m-label">함께한 폴더</p>
+    <div class="list">
+      ${shared.length ? shared.map(name => {
+        const i = folders.findIndex(x => x.name === name), fo = folders[i];
+        return `
+        <button class="row" type="button" data-album="${i}">
+          <span class="row-thumb"></span>
+          <span class="row-body"><b>${fo.name}</b><span>${fo.date} · ${fo.photos}장</span></span>
+          <span class="row-arrow">›</span>
+        </button>`;
+      }).join("") : '<p class="pf-empty">함께한 폴더가 모두 삭제됐어요</p>'}
+    </div>
+    <p class="f-note" style="text-align:center">숨기면 친구 목록과 초대 추천에 나오지 않아요. 상대에게는 알리지 않아요.</p>`;
+}
+
+document.addEventListener("input", e => {
+  if (!e.target.matches("[data-fsearch]")) return;
+  friendQuery = e.target.value;
+  document.getElementById("fList").innerHTML = friendRows();
+});
+
+const menuViews = {
+  default: () => menuSub && menuSub.startsWith("friend:")
+    ? menuFriend(menuSub.slice(7))
+    : ({ upload: menuUpload, notify: menuNotify, perm: menuPerm, friends: menuFriends }[menuSub] || menuMain)(),
+};
+menuViews.limited = menuViews.default;
+
+/* ---------- 폴더 설정 ---------- */
+const fset = { extend: 0, myUpload: true, link: "30일", pw: false, approve: true,
+               exSolo: false, exBlur: true, exShot: true, exVideo: false, exBestOnly: true, aiRules: ["술잔이 보이는 사진"] };
+const fsetMembers = [
+  { n: "승은", c: 64, host: true, me: true }, { n: "지민", c: 48 }, { n: "민서", c: 41 },
+  { n: "서연", c: 29 }, { n: "하준", c: 20 }, { n: "유나", c: 12 },
+];
+const fsw = (key, label) => `<button class="switch" type="button" role="switch" data-ftoggle="${key}" aria-checked="${fset[key]}" aria-label="${label}"></button>`;
+const fToggleRow = (key, title, sub = "") => `
+  <div class="m-row"><span class="txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>${fsw(key, title)}</div>`;
+
+function endLabel() {
+  const total = 22 * 60 + 30 + fset.extend * 60;          // 기본 종료: 오늘 오후 10:30
+  const h = Math.floor(total / 60) % 24, m = total % 60;
+  const ampm = h < 12 ? "오전" : "오후";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const left = 5 + fset.extend;
+  return `오늘 ${ampm} ${h12}:${String(m).padStart(2, "0")} <small>· ${left}시간 남음</small>`;
+}
+
+function fsetView() {
+  const f = folders[albumIdx];
+  const owner = states.fset === "owner";
+  const live = f.live;
+  return `
+    <div class="sticky m-head sub">
+      <button class="icon-btn" type="button" data-fback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>폴더 설정</h1>
+    </div>
+
+    <p class="m-label">수집 기간</p>
+    <section class="period">
+      <div class="period-top">
+        <b>${f.name}</b>
+        ${live ? '<span class="live"><i></i>수집 중</span>' : '<span class="status ended">수집 끝남</span>'}
+      </div>
+      <dl>
+        <dt>시작</dt><dd>10월 3일 (토) 오전 10:00</dd>
+        <dt>종료</dt><dd>${live ? endLabel() : "10월 4일 (일) 오후 9:00"}</dd>
+      </dl>
+      ${owner ? (live ? `
+      <div class="period-actions">
+        <button class="btn btn-soft" type="button" data-extend>1시간 연장</button>
+        <button class="btn btn-strong" type="button" data-fconfirm="end">지금 수집 끝내기</button>
+      </div>` : `
+      <div class="period-actions" style="grid-template-columns:1fr">
+        <button class="btn btn-soft" type="button" data-msg="수집 다시 열기는 아직 만들지 않았어요">수집 다시 열기</button>
+      </div>`) : ""}
+    </section>
+    <div class="m-list">
+      ${fToggleRow("myUpload", "내 사진 자동 업로드", fset.myUpload ? "수집 시간에 찍은 내 사진이 이 폴더에 올라가요." : "지금은 내 사진이 올라가지 않아요. 개인 사진을 찍은 뒤 다시 켜 주세요.")}
+    </div>
+
+    ${owner ? `
+    <p class="m-label">공유 옵션</p>
+    <p style="margin:-10px 0 -6px 4px;font-size:12px;color:var(--sub);line-height:1.5">이 폴더에만 적용돼요. 처음 값은 메뉴의 업로드 설정에서 가져왔어요.</p>
+    <div class="m-list">
+      ${fToggleRow("exSolo", "나만 나온 사진 제외")}
+      ${fToggleRow("exBlur", "흔들린 사진 제외")}
+      ${fToggleRow("exShot", "스크린샷 제외")}
+      ${fToggleRow("exVideo", "동영상 제외")}
+      ${fToggleRow("exBestOnly", "비슷한 사진은 BEST컷만 올리기", "같은 장면을 여러 장 찍었으면 AI가 고른 BEST컷 1장만 올리고, 나머지는 내 휴대폰에만 남겨요.")}
+      ${aiRuleBlock("fset")}
+    </div>
+
+    <p class="m-label">링크와 초대</p>
+    <div class="m-list">
+      <div class="m-row stack-row">
+        <span class="txt"><b>링크 만료</b><small>${fset.link === "없음" ? "링크가 만료되지 않아요." : `만든 날부터 ${fset.link} 동안 열려요.`}</small></span>
+        <div class="seg" role="group" aria-label="링크 만료 기간">
+          ${["1일", "7일", "30일", "없음"].map(v => `<button type="button" data-link="${v}" aria-pressed="${fset.link === v}">${v}</button>`).join("")}
+        </div>
+      </div>
+      ${fToggleRow("pw", "비밀번호 걸기", "링크를 받은 사람이 비밀번호를 입력해야 열 수 있어요.")}
+      ${fToggleRow("approve", "참여 승인", "링크로 들어온 사람은 내가 승인해야 사진을 볼 수 있어요.")}
+      <button class="m-row" type="button" data-fconfirm="relink">
+        <span class="txt"><b>링크 새로 만들기</b><small>링크가 원치 않는 곳에 퍼졌을 때 써요. 이전 링크는 더 이상 열리지 않아요.</small></span><span class="chev">›</span>
+      </button>
+    </div>` : ""}
+
+    <p class="m-label">참여자 ${fsetMembers.length}명</p>
+    <div class="m-list">
+      ${fsetMembers.map(m => `
+        <${owner && !m.me ? `button type="button" data-msg="'${m.n}'님 내보내기는 아직 만들지 않았어요"` : "div"} class="m-row">
+          <span class="row-face sm">${m.n[0]}</span>
+          <span class="txt"><b>${m.n}${m.host ? '<span class="host">방장</span>' : ""}${m.me ? '<span class="me">나</span>' : ""}</b><small>사진 ${m.c}장 올림</small></span>
+          ${owner && !m.me ? '<span class="chev">›</span>' : ""}
+        </${owner && !m.me ? "button" : "div"}>`).join("")}
+    </div>
+
+    ${owner ? `
+    <p class="m-label">폴더 정보</p>
+    <div class="m-list">
+      ${msgRow("폴더 이름 수정은 아직 만들지 않았어요", "", "이름", "", f.name)}
+      ${msgRow("대표 사진 변경은 아직 만들지 않았어요", "", "대표 사진")}
+      ${msgRow("장소 수정은 아직 만들지 않았어요", "", "장소", "", "강원 속초시")}
+      ${msgRow("메모 수정은 아직 만들지 않았어요", "", "메모")}
+    </div>
+    <button class="danger-btn" type="button" data-fconfirm="delete">폴더 삭제</button>` : `
+    <button class="danger-btn" type="button" data-fconfirm="leave">폴더 나가기</button>`}`;
+}
+
+const fsetViews = { owner: fsetView, member: fsetView };
+
+/* ---------- 폴더 만들기 ---------- */
+let cd = null;          // 만드는 중인 폴더
+let createFrom = "home";
+const NOW = "2026-10-10T18:00";
+const durList = [["3h", "3시간", 3], ["6h", "6시간", 6], ["1d", "하루", 24], ["custom", "직접 설정", 0]];
+
+function addHours(iso, h) {
+  const d = new Date(iso); d.setHours(d.getHours() + h);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtWhen(iso) {
+  const d = new Date(iso);
+  const wd = "일월화수목금토"[d.getDay()];
+  const h = d.getHours(), ampm = h < 12 ? "오전" : "오후", h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${wd}) ${ampm} ${h12}:${pad(d.getMinutes())}`;
+}
+function hoursBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 36e5); }
+
+function openCreate(from) {
+  const suggest = from === "suggest";
+  cd = {
+    step: 1, name: "", place: "",
+    start: suggest ? "2026-10-10T13:00" : NOW, dur: "6h",
+    end: suggest ? "2026-10-10T19:00" : addHours(NOW, 6),
+    withToday: suggest,
+    myUpload: true, exSolo: settings.exSolo, exBlur: settings.exBlur, exShot: settings.exShot, exVideo: settings.exVideo,
+    exBestOnly: settings.exBestOnly, aiRules: [...settings.aiRules],
+    link: "7일", approve: false, invited: new Set(), error: false, newIdx: null,
+  };
+  createFrom = screenName;
+  closeViewer(); exitSelect();
+  screenName = "create";
+  render();
+}
+
+const cSw = (key, label) => `<button class="switch" type="button" role="switch" data-ctoggle="${key}" aria-checked="${cd[key]}" aria-label="${label}"></button>`;
+const cToggleRow = (key, title, sub = "") => `
+  <div class="m-row"><span class="txt"><b>${title}</b>${sub ? `<small>${sub}</small>` : ""}</span>${cSw(key, title)}</div>`;
+
+function createHead() {
+  const n = cd.step;
+  return `
+    <div class="sticky c-head">
+      <button class="icon-btn" type="button" ${n === 2 ? "data-cprev" : "data-cclose"} aria-label="${n === 2 ? "이전 단계" : "닫기"}">
+        ${n === 2 ? svg.back : '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>'}
+      </button>
+      <h1>${n === 3 ? "" : "새 공유 폴더"}</h1>
+      ${n < 3 ? `<span class="c-steps" aria-label="${n}/2단계"><i class="on"></i><i class="${n === 2 ? "on" : ""}"></i></span>` : ""}
+    </div>`;
+}
+
+function createStep1() {
+  const hrs = hoursBetween(cd.start, cd.end);
+  const bad = hrs <= 0;
+  return `
+    ${createHead()}
+    <h2 class="c-title">어떤 모임인가요?</h2>
+    <p class="c-lead">정한 시간 동안 참여자가 찍은 사진이 이 폴더에 모여요.</p>
+
+    <div class="field">
+      <label for="cName">폴더 이름 <em id="cNameCount">${cd.name.length}/20</em></label>
+      <input class="inp" id="cName" data-cfield="name" maxlength="20" placeholder="예) 속초 여행, 동아리 MT" value="${cd.name.replace(/"/g, "&quot;")}" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <span class="lbl">수집 시간</span>
+      <div class="dur" role="group" aria-label="수집 시간 길이">
+        ${durList.map(([k, l]) => `<button type="button" data-dur="${k}" aria-pressed="${cd.dur === k}">${l}</button>`).join("")}
+      </div>
+      <div class="when">
+        <span>시작</span><input class="inp" type="datetime-local" lang="ko" id="cStart" data-cfield="start" value="${cd.start}">
+        ${cd.dur === "custom" ? `<span>종료</span><input class="inp" type="datetime-local" lang="ko" id="cEnd" data-cfield="end" value="${cd.end}">` : ""}
+      </div>
+      <p class="when-err" id="cWhenErr" ${bad ? "" : "hidden"}>종료 시간이 시작보다 빨라요. 다시 골라 주세요.</p>
+      ${cd.withToday ? cToggleRow("withToday", "오늘 이미 찍은 사진 32장도 올리기", "오후 1시부터 지금까지 찍은 사진이에요.").replace('<div class="m-row">', '<div class="m-row" style="border:1px solid var(--line);border-radius:14px">') : ""}
+    </div>
+
+
+    <div class="field">
+      <label for="cPlace">장소 <em>선택</em></label>
+      <input class="inp" id="cPlace" data-cfield="place" placeholder="예) 강원 속초시" value="${cd.place}" autocomplete="off">
+    </div>`;
+}
+
+function createStep2() {
+  return `
+    ${createHead()}
+    <h2 class="c-title">어떤 사진을 모을까요?</h2>
+    <p class="c-lead">메뉴의 업로드 설정에서 기본값을 가져왔어요. 이 폴더에만 적용돼요.</p>
+
+    <p class="m-label">공유 옵션</p>
+    <div class="m-list">
+      ${cToggleRow("myUpload", "내 사진 자동 업로드", "수집 시간에 찍은 내 사진을 바로 올려요.")}
+      ${cToggleRow("exSolo", "나만 나온 사진 제외")}
+      ${cToggleRow("exBlur", "흔들린 사진 제외")}
+      ${cToggleRow("exShot", "스크린샷 제외")}
+      ${cToggleRow("exVideo", "동영상 제외")}
+      ${cToggleRow("exBestOnly", "비슷한 사진은 BEST컷만 올리기", "같은 장면을 여러 장 찍었으면 AI가 고른 BEST컷 1장만 올리고, 나머지는 내 휴대폰에만 남겨요.")}
+      ${aiRuleBlock("cd")}
+    </div>
+
+    <p class="m-label">링크</p>
+    <div class="m-list">
+      <div class="m-row stack-row">
+        <span class="txt"><b>링크 만료</b><small>${cd.link === "없음" ? "링크가 만료되지 않아요." : `만든 날부터 ${cd.link} 동안 열려요.`}</small></span>
+        <div class="seg" role="group" aria-label="링크 만료 기간">
+          ${["1일", "7일", "30일", "없음"].map(v => `<button type="button" data-clink="${v}" aria-pressed="${cd.link === v}">${v}</button>`).join("")}
+        </div>
+      </div>
+      ${cToggleRow("approve", "참여 승인", "링크로 들어온 사람을 내가 승인해야 사진을 볼 수 있어요.")}
+    </div>
+    ${cd.error ? `<div class="c-err"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16.5v.01"/></svg><span><b>폴더를 만들지 못했어요.</b> 인터넷 연결을 확인하고 다시 눌러 주세요. 입력한 내용은 그대로 있어요.</span></div>` : ""}`;
+}
+
+function qrSvg(seed) {
+  let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const n = 21, cells = [];
+  const finder = (x, y) => [[x, y], [x + 14, y], [x, y + 14]].some(([fx, fy]) => false);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const inF = (a, b) => x >= a && x < a + 7 && y >= b && y < b + 7;
+    const f = inF(0, 0) || inF(14, 0) || inF(0, 14);
+    if (f) {
+      const lx = x < 7 ? x : x - 14, ly = y < 7 ? y : y - 14;
+      const ring = lx === 0 || lx === 6 || ly === 0 || ly === 6 || (lx >= 2 && lx <= 4 && ly >= 2 && ly <= 4);
+      if (ring) cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+      continue;
+    }
+    h = (h * 1103515245 + 12345) >>> 0;
+    if ((h >>> 16) % 2) cells.push(`<rect x="${x}" y="${y}" width="1" height="1"/>`);
+  }
+  return `<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges" fill="#111" aria-hidden="true">${cells.join("")}</svg>`;
+}
+
+function createDone() {
+  const f = folders[cd.newIdx];
+  const url = `https://phou.app/j/${(f.name.length * 7919).toString(36)}k2`;
+  const recent = [...new Set([...cd.invited, "지민", "민서", "서연", "하준", "유나"])];
+  return `
+    ${createHead()}
+    <section class="done">
+      <div class="done-head">
+        <h2>'${f.name}' 폴더를 만들었어요</h2>
+        <p>${fmtWhen(cd.start)}부터 사진을 모아요.<br>친구에게 링크나 QR을 보내 초대하세요.</p>
+      </div>
+      <div class="qr">${qrSvg(url)}</div>
+      <div class="linkbox"><code id="cUrl">${url}</code><button type="button" data-copy="${url}">복사</button></div>
+      <div class="share-row">
+        <button type="button" data-msg="카카오톡 공유는 아직 연결하지 않았어요"><span>톡</span>카카오톡</button>
+        <button type="button" data-msg="인스타그램 공유는 아직 연결하지 않았어요"><span>인</span>인스타그램</button>
+        <button type="button" data-msg="메시지 공유는 아직 연결하지 않았어요"><span>문자</span>메시지</button>
+        <button type="button" data-msg="다른 앱 공유는 아직 연결하지 않았어요"><span>⋯</span>더보기</button>
+      </div>
+      <div class="friends-block">
+        <p class="sub-label">최근 함께한 친구</p>
+        <div class="friends">
+          ${recent.map(n => `<button type="button" data-invite="${n}" aria-pressed="${cd.invited.has(n)}"><i>${n[0]}</i>${n}${cd.invited.has(n) ? " · 초대함" : ""}</button>`).join("")}
+        </div>
+      </div>
+    </section>`;
+}
+
+function createView() {
+  if (!cd) openCreate("home");
+  return cd.step === 1 ? createStep1() : cd.step === 2 ? createStep2() : createDone();
+}
+const createViews = { default: createView, fail: createView };
+
+/* ---------- 알림 ---------- */
+const nIcons = {
+  ai:     '<svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.3z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>',
+  start:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>',
+  end:    '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12.5 3 3 5-6"/></svg>',
+  link:   '<svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>',
+  trash:  '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+};
+const notifs = [
+  { id: 2, g: "오늘", type: "upload", who: "지민", read: false, folder: "속초 여행", time: "32분 전",
+    text: `<b>지민</b>님이 <b>'속초 여행'</b>에 사진 24장을 올렸어요.`, thumbs: 24, go: "all" },
+  { id: 3, g: "오늘", type: "approve", who: "하준", read: false, folder: "속초 여행", time: "1시간 전",
+    text: `<b>하준</b>님이 링크로 <b>'속초 여행'</b>에 들어오려고 해요. 승인하면 사진을 볼 수 있어요.`, state: null },
+  { id: 4, g: "오늘", type: "start", read: true, folder: "속초 여행", time: "오전 10:00",
+    text: `<b>'속초 여행'</b> 사진 수집이 시작됐어요. 오후 10:30까지 찍은 사진이 모여요.`, go: "all" },
+  { id: 5, g: "이번 주", type: "invite", who: "민서", read: false, time: "2일 전",
+    text: `<b>민서</b>님이 <b>'한강 피크닉'</b> 폴더에 초대했어요.`, state: null },
+  { id: 6, g: "이번 주", type: "end", read: true, folder: "동아리 MT", time: "3일 전",
+    text: `<b>'동아리 MT'</b> 사진 수집이 끝났어요. 참여자 11명이 사진 186장을 모았어요.`, go: "all" },
+  { id: 7, g: "이전", type: "link", read: true, folder: "롯데월드", time: "9월 20일",
+    text: `<b>'롯데월드'</b> 공유 링크가 내일 만료돼요. 폴더 설정에서 기간을 늘릴 수 있어요.`, go: "fset" },
+  { id: 8, g: "이전", type: "trash", read: true, time: "9월 18일",
+    text: `휴지통의 사진 12장이 3일 뒤 완전히 삭제돼요.`, go: "trash" },
+];
+const unreadCount = () => states.notif === "empty" ? 0 : notifs.filter(n => !n.read).length;
+
+function notifItem(n) {
+  const icon = n.who
+    ? `<span class="n-ic face">${n.who[0]}</span>`
+    : `<span class="n-ic${n.type === "trash" || n.type === "link" ? " soft" : ""}">${nIcons[n.type]}</span>`;
+  let extra = "";
+  if (n.thumbs === "best") extra = `<div class="n-thumbs"><i><b>BEST</b></i><i><b>BEST</b></i><i><b>BEST</b></i><i class="more">+2</i></div>`;
+  else if (typeof n.thumbs === "number") extra = `<div class="n-thumbs"><i></i><i></i><i></i><i class="more">+${n.thumbs - 3}</i></div>`;
+  if (n.type === "approve") extra = n.state
+    ? `<span class="n-done">${n.state === "ok" ? "승인했어요" : "거절했어요"}</span>`
+    : `<div class="n-acts"><button type="button" class="primary" data-nact="ok:${n.id}">승인</button><button type="button" data-nact="no:${n.id}">거절</button></div>`;
+  if (n.type === "invite") extra = n.state
+    ? `<span class="n-done">${n.state === "ok" ? "참여했어요 · 홈에서 볼 수 있어요" : "초대를 거절했어요"}</span>`
+    : `<div class="n-acts"><button type="button" class="primary" data-nact="ok:${n.id}">참여하기</button><button type="button" data-nact="no:${n.id}">거절</button></div>`;
+  const tag = n.go ? "button" : "div";
+  return `
+    <${tag} ${n.go ? 'type="button"' : ""} class="n-item${n.read ? "" : " unread"}" data-nid="${n.id}">
+      ${icon}
+      <span class="n-body"><p>${n.text}</p>${extra}<small>${n.time}</small></span>
+      ${n.read ? "" : '<span class="n-dot" aria-label="안 읽음"></span>'}
+    </${tag}>`;
+}
+
+function notifHead() {
+  return `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-nback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>알림</h1>
+      <button class="text-link" type="button" data-nreadall ${unreadCount() ? "" : "disabled"}>모두 읽음</button>
+    </div>`;
+}
+
+const notifViews = {
+  default: () => {
+    return `${notifHead()}
+      <section class="n-group">
+        ${notifs.map(notifItem).join("")}
+      </section>
+      <p class="n-foot">30일이 지난 알림은 자동으로 지워져요.<br>받을 알림은 메뉴 › 알림 설정에서 바꿀 수 있어요.</p>`;
+  },
+  empty: () => `${notifHead()}
+    <div class="center-state">
+      <div class="search-icon"><svg viewBox="0 0 24 24" style="stroke:var(--fg)"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></div>
+      <h3>아직 알림이 없어요</h3>
+      <p>사진 수집이 시작되거나 친구가 사진을 올리면<br>여기에서 알려 드려요.</p>
+    </div>`,
+};
+
+/* 친구 초대: 기존 공유 앨범 고르기 또는 새 폴더 만들기 */
+let inviteNames = [];
+function openInviteSheet(names) {
+  inviteNames = names;
+  const who = names.length > 2 ? `${names[0]}님 외 ${names.length - 1}명` : names.map(n => `${n}님`).join(", ");
+  const rows = folders.map((f, i) => {
+    const already = names.filter(n => friends.find(x => x.n === n).folders.includes(f.name));
+    const allIn = already.length === names.length;
+    const tag = allIn ? "이미 참여 중" : already.length ? `${already.length}명 참여 중` : f.live ? "수집 중" : "";
+    return { f, i, allIn, tag };
+  }).sort((a, b) => (a.allIn - b.allIn) || (b.f.live - a.f.live));
+  openSheet(`
+    <h3>어느 공유 앨범에 초대할까요?</h3>
+    <p>${who}을 초대해요. 초대받은 사람에게 알림이 가요.</p>
+    <div class="inv-list">
+      ${rows.map(({ f, i, allIn, tag }) => `
+        <button class="inv-row" type="button" data-finto="${i}" ${allIn ? "disabled" : ""}>
+          <span class="row-thumb"></span>
+          <span class="txt"><b>${f.name}</b><small>${f.date} · ${f.photos}장</small></span>
+          ${tag ? `<span class="tag">${tag}</span>` : ""}
+        </button>`).join("")}
+    </div>
+    <button class="inv-new" type="button" data-finnew><span>+</span><b>새 폴더 만들어서 초대하기</b></button>
+    <button class="btn btn-soft btn-block" type="button" data-sheetclose>닫기</button>`);
+}
+
+/* 친구 초대 → 새 폴더 만들기 (고른 사람은 완료 화면에서 이미 초대된 상태) */
+function inviteToNew(names) {
+  openCreate("");
+  names.forEach(n => cd.invited.add(n));
+  toast(names.length > 1 ? `폴더를 만들면 ${names.length}명에게 초대 알림이 가요` : `폴더를 만들면 ${names[0]}님에게 초대 알림이 가요`);
+}
+
+/* 친구 목록: 길게 누르면 편집 모드 */
+document.addEventListener("pointerdown", e => {
+  if (screenName !== "menu" || menuSub !== "friends" || fEdit) return;
+  const row = e.target.closest("[data-fpress]");
+  if (!row) return;
+  longPressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => {
+    longPressed = true;
+    fEdit = true; fSel.clear(); fSel.add(row.dataset.fpress);
+    render(true);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }, 500);
+});
+document.addEventListener("contextmenu", e => { if (e.target.closest("[data-fpress]")) e.preventDefault(); });
+
+/* ---------- 프로필 ---------- */
+const me = { name: "승은", phone: "010-1234-5678" };
+let pfEdit = false, pfTab = "mine", pfFrom = "home", pfDraft = "";
+const camIcon = '<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+
+function profileView() {
+  const mineF = folders.map((f, i) => [f, i]).filter(([f]) => f.owner);
+  const joinF = folders.map((f, i) => [f, i]).filter(([f]) => !f.owner);
+  const list = pfTab === "mine" ? mineF : joinF;
+  const uploaded = 64 + 38 + 22;          // 더미: 내가 올린 사진 수
+  return `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-pback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>프로필</h1>
+    </div>
+
+    <section class="pf-card">
+      <span class="pf-pic" aria-hidden="true">${me.name[0]}</span>
+      <h2 class="pf-name">${me.name}</h2>
+      <span class="pf-phone">${me.phone}</span>
+      <button class="pf-edit" type="button" data-pfedit>프로필 수정</button>
+    </section>
+
+    <section class="pf-stats" aria-label="사진 기록">
+      <div><b>${mineF.length}</b><span>만든 폴더</span></div>
+      <div><b>${joinF.length}</b><span>참여한 폴더</span></div>
+      <div><b>${uploaded}</b><span>올린 사진</span></div>
+    </section>
+
+    <section class="pf-best">
+      <span class="n">17</span>
+      <p><b>내 사진이 BEST컷으로 17번 뽑혔어요</b><br>친구들이 가장 많이 저장한 사진도 내 사진이에요.</p>
+    </section>
+
+    <section>
+      <div class="pf-tabs" role="tablist">
+        <button type="button" role="tab" data-pftab="mine" aria-selected="${pfTab === "mine"}">내가 만든 폴더</button>
+        <button type="button" role="tab" data-pftab="join" aria-selected="${pfTab === "join"}">참여한 폴더</button>
+      </div>
+      <div class="list">
+        ${list.length ? list.map(([f, i]) => `
+          <button class="row" type="button" data-album="${i}">
+            <span class="row-thumb"></span>
+            <span class="row-body"><b>${f.name}</b><span>${f.date} · ${f.photos}장${f.live ? " · 수집 중" : ""}</span></span>
+            <span class="row-arrow">›</span>
+          </button>`).join("") : `<p class="pf-empty">${pfTab === "mine" ? "아직 만든 폴더가 없어요" : "아직 참여한 폴더가 없어요"}</p>`}
+      </div>
+    </section>
+
+    <div class="pf-danger">
+      <button type="button" data-pfout="logout">로그아웃</button>
+      <button type="button" data-pfout="delete">계정 삭제</button>
+    </div>`;
+}
+const profileViews = { default: profileView };
+
+/* ---------- 프로필 수정 ---------- */
+let peFrom = "profile", pe = null;
+function openProfileEdit() {
+  peFrom = screenName;
+  pe = { name: me.name, find: settings.findByPhone };
+  screenName = "pedit";
+  render();
+}
+const peChanged = () => pe && (pe.name.trim() !== me.name || pe.find !== settings.findByPhone);
+const peValid = () => pe && pe.name.trim().length > 0;
+
+function peditView() {
+  if (!pe) pe = { name: me.name, find: settings.findByPhone };
+  return `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-peback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>프로필 수정</h1>
+      <button class="text-link pe-save" type="button" data-pesave id="peSave" ${peChanged() && peValid() ? "" : "disabled"}>저장</button>
+    </div>
+
+    <section class="pf-card">
+      <button class="pf-pic" type="button" data-pephoto aria-label="프로필 사진 바꾸기">
+        ${(pe.name.trim() || me.name)[0]}<span class="cam">${camIcon}</span>
+      </button>
+      <button class="text-link" type="button" data-pephoto style="font-size:13px;font-weight:600;padding:6px">사진 바꾸기</button>
+    </section>
+
+    <div class="field">
+      <label for="peName">이름 <em id="peCount">${pe.name.length}/10</em></label>
+      <input class="inp" id="peName" data-pename maxlength="10" value="${pe.name.replace(/"/g, "&quot;")}" autocomplete="off">
+      <p class="f-note" id="peHint" style="margin:0 2px">${pe.name.trim() ? "공유 폴더의 참여자 목록과 사진의 '올린 사람'에 이 이름이 보여요." : "이름을 입력해 주세요."}</p>
+    </div>
+
+    <div class="field">
+      <span class="lbl">전화번호</span>
+      <div class="inp pe-phone">${me.phone}<button type="button" class="text-link" data-msg="전화번호 변경은 본인 인증 후에 할 수 있어요">변경</button></div>
+    </div>
+
+    <div class="m-list">
+      <div class="m-row">
+        <span class="txt"><b>전화번호로 나를 찾을 수 있게 하기</b><small>친구가 내 전화번호로 검색해서 공유 폴더에 초대할 수 있어요.</small></span>
+        <button class="switch" type="button" role="switch" data-pefind aria-checked="${pe.find}" aria-label="전화번호로 나를 찾을 수 있게 하기"></button>
+      </div>
+    </div>`;
+}
+const peditViews = { default: peditView };
+
+/* ---------- 링크·QR 공유 ---------- */
+let shareFrom = "album", qrBig = false;
+const shareUrl = f => `https://phou.app/j/${(f.name.length * 7919 + f.photos).toString(36)}k2`;
+
+function shareView() {
+  const f = folders[albumIdx];
+  const url = shareUrl(f);
+  const owner = f.owner;
+  const expired = states.share === "expired";
+  const notIn = friends.filter(x => !hiddenFriends.has(x.n) && !x.folders.includes(f.name));
+  const linkText = expired ? "링크가 만료됐어요" : fset.link === "없음" ? "만료 없음" : `만든 날부터 ${fset.link} 동안 열려요`;
+  return `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-shback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>친구 초대</h1>
+    </div>
+    <section class="done">
+      <div class="done-head">
+        <h2>'${f.name}'에 초대하기</h2>
+        <p>${expired ? "링크가 만료돼서 지금은 아무도 들어올 수 없어요." : "링크나 QR로 들어온 친구는 앱 설치 없이<br>바로 사진을 보고 저장할 수 있어요."}</p>
+      </div>
+      <div class="qr-wrap">
+        <button class="qr qr-btn${expired ? " expired" : ""}" type="button" data-qrbig ${expired ? "disabled" : ""} aria-label="QR 크게 보기">${qrSvg(url)}${expired ? "" : "<small>눌러서 크게 보기</small>"}</button>
+        ${expired ? `<span class="exp">만료된 링크</span>` : ""}
+      </div>
+      ${expired ? `
+      <button class="btn btn-primary" type="button" data-shrenew style="height:48px;padding:0 22px;border-radius:12px;font-size:15px">${owner ? "새 링크 만들기" : "방장에게 새 링크 요청하기"}</button>` : `
+      <div class="linkbox"><code id="cUrl">${url}</code><button type="button" data-copy="${url}">복사</button></div>
+      <div class="share-row">
+        <button type="button" data-msg="카카오톡 공유는 아직 연결하지 않았어요"><span>톡</span>카카오톡</button>
+        <button type="button" data-msg="인스타그램 공유는 아직 연결하지 않았어요"><span>인</span>인스타그램</button>
+        <button type="button" data-msg="메시지 공유는 아직 연결하지 않았어요"><span>문자</span>메시지</button>
+        <button type="button" data-msg="다른 앱 공유는 아직 연결하지 않았어요"><span>⋯</span>더보기</button>
+      </div>`}
+
+      <div class="m-list sh-info">
+        <div class="m-row"><span class="txt"><b>링크 만료</b><small>${linkText}</small></span>${owner ? '<button class="text-link" type="button" data-shset style="font-size:13px;font-weight:600">변경</button>' : ""}</div>
+        <div class="m-row"><span class="txt"><b>참여 승인</b><small>${fset.approve ? "링크로 들어온 사람은 방장이 승인해야 사진을 볼 수 있어요" : "링크를 받은 사람은 바로 참여할 수 있어요"}</small></span>${owner ? '<button class="text-link" type="button" data-shset style="font-size:13px;font-weight:600">변경</button>' : ""}</div>
+      </div>
+
+      ${!expired && notIn.length ? `
+      <div class="friends-block">
+        <p class="sub-label">아직 참여하지 않은 친구</p>
+        <div class="friends">
+          ${notIn.map(x => `<button type="button" data-shinv="${x.n}"><i>${x.n[0]}</i>${x.n}</button>`).join("")}
+        </div>
+      </div>` : ""}
+    </section>
+    ${qrBig ? `
+    <div class="qr-full" role="dialog" aria-label="QR 크게 보기">
+      <h2>${f.name}</h2>
+      <div class="qr">${qrSvg(url)}</div>
+      <p>친구 휴대폰 카메라로 찍으면 바로 들어와요</p>
+      <button type="button" data-qrclose>닫기</button>
+    </div>` : ""}`;
+}
+const shareViews = { default: shareView, expired: shareView };
+
+/* ---------- AI 분류: 사람별 · 장소별 · 시간대별 ---------- */
+const albumPeople = [
+  { name: "승은", n: 64, me: true }, { name: "지민", n: 58 }, { name: "민서", n: 47 }, { name: "서연", n: 41 },
+  { name: "하준", n: 33 }, { name: "유나", n: 29 }, { name: "도윤", n: 18 }, { name: "예린", n: 14 },
+  { name: "시우", n: 11 }, { name: "다인", n: 9 }, { name: "현우", n: 6 },
+];
+const albumPlaces = [
+  { name: "영금정 정자", sub: "강원 속초시 영금정로", n: 86 },
+  { name: "속초 관광수산시장", sub: "강원 속초시 중앙로", n: 64 },
+  { name: "숙소", sub: "강원 속초시 대포동", n: 56 },
+];
+const albumTimes = [
+  { name: "10월 3일 저녁", sub: "오후 6시 – 10시", n: 52, di: 2 },
+  { name: "10월 4일 오전", sub: "오전 9시 – 12시", n: 47, di: 1 },
+  { name: "10월 4일 오후", sub: "오후 1시 – 6시", n: 69, di: 0 },
+  { name: "10월 4일 저녁", sub: "오후 6시 – 9시", n: 31, di: 0 },
+  { name: "10월 5일 새벽", sub: "오전 0시 – 2시", n: 15, di: 2 },
+];
+let cl = [];   // 화면 쌓기: { mode: "list"|"grid", scope, type, key }
+
+function allIds(scope) {
+  const list = scope === "photos" ? days : albumDays, pre = scope === "photos" ? "p" : "a";
+  const ids = [];
+  list.forEach((d, di) => { for (let i = 0; i < d.count; i++) if (!deleted.has(`${pre}${di}-${i}`)) ids.push(`${pre}${di}-${i}`); });
+  return ids;
+}
+function hashPick(ids, seed, ratio) {
+  let h = 0; for (const c of seed) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return ids.filter((id, j) => ((h + j * 2654435761) >>> 0) % 100 < ratio * 100);
+}
+const meSplit = [
+  { name: "나 혼자 나온 사진", key: "solo", n: 18 },
+  { name: "함께 나온 사진", key: "with", n: 46 },
+];
+function clusterIds(scope, type, key) {
+  const ids = allIds(scope);
+  if (type === "me") {
+    const item = meSplit.find(x => x.name === key);
+    const picked = hashPick(ids, `me-${item.key}`, item.key === "solo" ? .22 : .5);
+    return picked.length ? picked : ids.slice(0, 3);
+  }
+  if (type === "times") {
+    const t = albumTimes.find(x => x.name === key);
+    return ids.filter(id => parseId(id).di === t.di);
+  }
+  const src = type === "people" ? (scope === "photos" ? people : albumPeople) : (scope === "photos" ? places : albumPlaces);
+  const item = src.find(x => x.name === key);
+  const ratio = Math.min(.8, Math.max(.25, item.n / (scope === "photos" ? 160 : 90)));
+  const picked = hashPick(ids, key, ratio);
+  return picked.length ? picked : ids.slice(0, 3);
+}
+
+function aiClassCards() {
+  const cand = dedupeCandidates("a").mine.length + dedupeCandidates("a").others.length;
+  return `
+    <div class="cls-head"><h2>AI가 이렇게 분류했어요</h2><span>얼굴, 촬영 위치, 촬영 시간을 보고 자동으로 묶었어요</span></div>
+    <div class="cls-grid">
+      <button class="cls-card" type="button" data-clist="album|people">
+        <span class="top"><b>사람별</b></span>
+        <span class="big">${albumPeople.length}<small>명</small></span>
+        <span class="peek">${albumPeople.slice(0, 4).map(p => `<i>${p.name[0]}</i>`).join("")}</span>
+      </button>
+      <button class="cls-card" type="button" data-clist="album|places">
+        <span class="top"><b>장소별</b><span class="n">${albumPlaces.reduce((a, p) => a + p.n, 0)}장</span></span>
+        <span class="big">${albumPlaces.length}<small>곳</small></span>
+        <span class="peek sq"><i></i><i></i><i></i></span>
+      </button>
+      <button class="cls-card" type="button" data-clist="album|times">
+        <span class="top"><b>시간대별</b><span class="n">${albumTimes.reduce((a, p) => a + p.n, 0)}장</span></span>
+        <span class="big">${albumTimes.length}<small>개 구간</small></span>
+        <span class="peek sq"><i></i><i></i><i></i><i></i></span>
+      </button>
+      <button class="cls-card warn" type="button" data-opt="dedupe">
+        <span class="top"><b>자동 삭제 후보</b></span>
+        <span class="big">${cand}<small>장</small></span>
+        <span class="n">BEST컷을 뺀 비슷한 사진</span>
+      </button>
+    </div>`;
+}
+
+const pinIcon = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>';
+const clockIcon = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+function clusterView() {
+  const top = cl[cl.length - 1];
+  if (!top) return "";
+  const titleMap = { people: "사람별", places: "장소별", times: "시간대별", me: "내 얼굴" };
+  const head = t => `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-clback aria-label="뒤로 가기">${svg.back}</button>
+      <h1>${t}</h1>
+    </div>`;
+  if (top.mode === "list") {
+    const src = top.type === "people" ? albumPeople : top.type === "places" ? albumPlaces : albumTimes;
+    const sorted = top.type === "times" ? src : [...src].sort((a, b) => b.n - a.n);
+    return `${head(titleMap[top.type])}
+      <p class="cl-sum">'${folders[albumIdx].name}' 사진을 ${top.type === "people" ? `얼굴로 ${src.length}명` : top.type === "places" ? `촬영 위치로 ${src.length}곳` : `촬영 시간으로 ${src.length}개 구간`}으로 나눴어요.</p>
+      <div class="list cl-list">
+        ${sorted.map(x => `
+          <button class="row" type="button" data-cgrid="album|${top.type}|${x.name}">
+            ${top.type === "people" ? `<span class="row-face">${x.name[0]}</span>` : `<span class="row-pin">${top.type === "places" ? pinIcon : clockIcon}</span>`}
+            <span class="row-body"><b>${x.name}${x.me ? '<span class="me">나</span>' : ""}</b><span>${x.sub ? `${x.sub} · ` : ""}사진 ${x.n}장</span></span>
+            <span class="row-arrow">›</span>
+          </button>`).join("")}
+      </div>
+      ${top.type === "people" ? '<p class="f-note" style="text-align:center">얼굴 정보는 이 휴대폰 안에서만 처리해요. 메뉴 › 이 앱이 사용하는 권한에서 끌 수 있어요.</p>' : ""}`;
+  }
+  const ids = clusterIds(top.scope, top.type, top.key);
+  const src = top.type === "me" ? meSplit : top.type === "people" ? (top.scope === "photos" ? people : albumPeople) : top.type === "places" ? (top.scope === "photos" ? places : albumPlaces) : albumTimes;
+  const item = src.find(x => x.name === top.key);
+  const tile = id => `<button class="ph" type="button" data-photo="${id}" aria-label="사진"></button>`;
+  return `${head(top.key)}
+    <p class="cl-sum">${top.scope === "photos" ? "모든 폴더" : `'${folders[albumIdx].name}'`} · ${titleMap[top.type]} · 사진 ${item ? item.n : ids.length}장${item && item.sub ? ` · ${item.sub}` : ""}</p>
+    <button class="dl-btn" type="button" data-cldl="${item ? item.n : ids.length}">${svg.down}<span>이 사진 모두 저장 · ${item ? item.n : ids.length}장</span></button>
+    ${clusterByDate(ids, top.scope).map(g => `
+      <section class="day">
+        <div class="day-head">${g.date}<span>· ${g.sub ? `${g.sub} · ` : ""}${g.ids.length}장</span></div>
+        <div class="cl-grid">${g.ids.map(tile).join("")}</div>
+      </section>`).join("")}
+    <p class="f-note" style="text-align:center">프로토타입이라 예시 사진 ${ids.length}장만 보여줘요.</p>`;
+}
+const clusterViews = { default: clusterView };
+
+// 상세 그리드를 날짜별로 묶는다 (전체 사진: 날짜 + 폴더, 공유 앨범: 날짜 + 시간대)
+function clusterByDate(ids, scope) {
+  const groups = [];
+  ids.forEach(id => {
+    const { di } = parseId(id);
+    let g = groups.find(x => x.di === di);
+    if (!g) {
+      if (scope === "photos") g = { di, date: days[di].date, sub: days[di].folder, ids: [] };
+      else {
+        const m = albumDays[di].head.match(/^(.*?일)\s*(.*)$/);
+        g = { di, date: m ? m[1] : albumDays[di].head, sub: m ? m[2] : "", ids: [] };
+      }
+      groups.push(g);
+    }
+    g.ids.push(id);
+  });
+  return groups;
+}
+
+/* ---------- 공유 옵션: AI에게 부탁하기 ---------- */
+const ruleCtx = k => k === "settings" ? settings : k === "fset" ? fset : cd;
+function aiRuleBlock(k) {
+  const o = ruleCtx(k);
+  if (!o) return "";
+  const rules = o.aiRules || [];
+  return `
+    <div class="m-row stack-row air">
+      <span class="txt"><b>이외의 설정은 AI에게 부탁해요</b><small>빼고 싶은 사진을 말로 적으면 AI가 알아서 걸러요.</small></span>
+      ${rules.length ? `<div class="air-chips">${rules.map((r, i) => `<span class="air-chip">${r}<button type="button" data-airdel="${k}:${i}" aria-label="'${r}' 지우기">×</button></span>`).join("")}</div>` : ""}
+      <div class="air-input">
+        <input class="inp" id="air-${k}" data-airin="${k}" placeholder="예) 술잔이 보이는 사진은 빼줘" autocomplete="off">
+        <button type="button" data-airadd="${k}">추가</button>
+      </div>
+      ${rules.length < 2 ? `<div class="air-sugg">${["눈 감은 사진", "음식만 찍은 사진", "얼굴이 잘린 사진"].filter(x => !rules.includes(x)).map(x => `<button type="button" data-airsug="${k}|${x}">+ ${x}</button>`).join("")}</div>` : ""}
+    </div>`;
+}
+function addRule(k, text) {
+  const t = text.trim().replace(/(은|는)?\s*(빼줘|빼 줘|제외해줘|제외해 줘|빼주세요)\.?$/, "").trim();
+  if (!t) { toast("빼고 싶은 사진을 적어 주세요"); return; }
+  const o = ruleCtx(k);
+  if (o.aiRules.includes(t)) { toast("이미 추가한 조건이에요"); return; }
+  o.aiRules.push(t);
+  render(true);
+  toast(`'${t}'은 올리지 않을게요`);
+}
+function ruleClick(e) {
+  const add = e.target.closest("[data-airadd]");
+  if (add) { const k = add.dataset.airadd; addRule(k, document.getElementById(`air-${k}`).value); return true; }
+  const sug = e.target.closest("[data-airsug]");
+  if (sug) { const [k, t] = sug.dataset.airsug.split("|"); addRule(k, t); return true; }
+  const del = e.target.closest("[data-airdel]");
+  if (del) { const [k, i] = del.dataset.airdel.split(":"); ruleCtx(k).aiRules.splice(Number(i), 1); render(true); return true; }
+  return false;
+}
+document.addEventListener("keydown", e => {
+  const inp = e.target.closest && e.target.closest("[data-airin]");
+  if (inp && e.key === "Enter") { e.preventDefault(); addRule(inp.dataset.airin, inp.value); }
+});
+
+/* ---------- 카드형 추천 확인 ---------- */
+let rv = null;
+function reviewItems() {
+  const items = [];
+  albumDays.forEach((d, di) => Object.keys(d.groups).forEach(k => {
+    const i0 = Number(k), gid = `a${di}-${i0}`;
+    const ks = leftKs("a", di, i0, d.groups[k]);
+    if (!ks.length) return;
+    items.push({ gid, di, i0, reason: d.reasons[k], head: d.head });
+  }));
+  return items;
+}
+function rvPick(it) {
+  const ks = leftKs("a", it.di, it.i0, albumDays[it.di].groups[it.i0]);
+  const pick = ks.includes(bestPick[it.gid] || 0) ? (bestPick[it.gid] || 0) : ks[0];
+  return { ks, pick };
+}
+function startReview() {
+  rv = { items: reviewItems(), i: 0, kept: [], skipped: [], swapped: new Set(), done: false };
+  screenName = "review"; render();
+}
+function reviewView() {
+  if (!rv) return "";
+  const head = `
+    <div class="sticky n-head">
+      <button class="icon-btn" type="button" data-rvclose aria-label="닫기"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      <h1>${rv.done ? "추천 확인 완료" : "이 사진 어때요?"}</h1>
+      ${rv.done ? "" : `<span class="v-count" style="color:var(--sub)">${rv.i + 1} / ${rv.items.length}</span>`}
+    </div>`;
+  if (rv.done) {
+    return `${head}
+      <section class="done" style="padding-top:8px">
+        <div class="done-head">
+          <h2>${rv.kept.length ? `추천 사진 ${rv.kept.length}장을 골랐어요` : "고른 사진이 없어요"}</h2>
+          <p>${rv.kept.length ? "원본 화질로 내 휴대폰에 저장할 수 있어요." : "전체 탭에서 다른 사진을 둘러볼 수 있어요."}</p>
+        </div>
+        <div class="rv-sum" style="width:100%">
+          <div><b>${rv.kept.length}</b><span>저장할 사진</span></div>
+          <div><b>${rv.skipped.length}</b><span>건너뛴 사진</span></div>
+          <div><b>${rv.swapped.size}</b><span>다른 컷으로 바꿈</span></div>
+        </div>
+        ${rv.kept.length ? `<button class="btn btn-primary" type="button" data-rvsave style="width:100%;height:52px;border-radius:12px;font-size:16px">${rv.kept.length}장 원본으로 저장</button>` : ""}
+        <button class="btn btn-soft" type="button" data-rvagain style="width:100%;height:48px;border-radius:12px;font-size:15px;margin-top:-20px">처음부터 다시 보기</button>
+      </section>`;
+  }
+  const it = rv.items[rv.i];
+  const { ks, pick } = rvPick(it);
+  const shade = k => shades[(it.di * 3 + it.i0 + k) % shades.length];
+  return `${head}
+    <div class="rv-prog">${rv.items.map((_, j) => `<i class="${j <= rv.i ? "on" : ""}"></i>`).join("")}</div>
+    <div class="rv-stage" id="rvStage">
+      <div class="rv-card" id="rvCard">
+        <div class="img" style="background:${shade(pick)}">
+          <span class="best">BEST</span>${photoGlyph}
+          <span class="stamp keep">저장</span><span class="stamp skip">건너뛰기</span>
+        </div>
+        <div class="meta"><b>${it.reason}</b><small>${it.head} · 비슷한 사진 ${ks.length}장 중 AI 추천</small></div>
+      </div>
+    </div>
+    ${ks.length > 1 ? `
+    <div class="rv-alt">
+      <p>마음에 안 들면 다른 컷을 골라요</p>
+      <div class="strip">${ks.map(k => `<button type="button" data-rvalt="${k}" aria-current="${k === pick}" aria-label="${k + 1}번째 컷" style="background:${shade(k)}">${k === pick ? "<i>BEST</i>" : ""}</button>`).join("")}</div>
+    </div>` : ""}
+    <div class="rv-acts">
+      <button type="button" class="btn-soft" data-rvskip><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>건너뛰기</button>
+      <button type="button" class="btn-strong" data-rvkeep><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>저장할게요</button>
+    </div>
+    <p class="rv-hint">카드를 오른쪽으로 밀면 저장, 왼쪽으로 밀면 건너뛰어요</p>`;
+}
+const reviewViews = { default: reviewView };
+
+function rvDecide(keep) {
+  const it = rv.items[rv.i];
+  const { pick } = rvPick(it);
+  (keep ? rv.kept : rv.skipped).push(`a${it.di}-${it.i0 + pick}`);
+  const card = document.getElementById("rvCard");
+  const next = () => { if (rv.i < rv.items.length - 1) rv.i++; else rv.done = true; render(true); };
+  if (card) {
+    card.style.transform = `translateX(${keep ? 120 : -120}%) rotate(${keep ? 12 : -12}deg)`;
+    card.style.opacity = "0";
+    setTimeout(next, 220);
+  } else next();
+}
+
+let rvDrag = null;
+document.addEventListener("pointerdown", e => {
+  if (screenName !== "review" || !rv || rv.done) return;
+  const card = e.target.closest("#rvCard");
+  if (!card) return;
+  rvDrag = { x: e.clientX, card };
+  card.style.transition = "none";
+});
+document.addEventListener("pointermove", e => {
+  if (!rvDrag) return;
+  const dx = e.clientX - rvDrag.x;
+  rvDrag.card.style.transform = `translateX(${dx}px) rotate(${dx / 20}deg)`;
+  rvDrag.card.querySelector(".stamp.keep").style.opacity = Math.max(0, Math.min(1, dx / 90));
+  rvDrag.card.querySelector(".stamp.skip").style.opacity = Math.max(0, Math.min(1, -dx / 90));
+});
+document.addEventListener("pointerup", e => {
+  if (!rvDrag) return;
+  const dx = e.clientX - rvDrag.x, card = rvDrag.card;
+  rvDrag = null;
+  card.style.transition = "";
+  if (Math.abs(dx) > 90) { rvDecide(dx > 0); return; }
+  card.style.transform = "";
+  card.querySelectorAll(".stamp").forEach(st => st.style.opacity = 0);
+});
+
+function reviewClick(e) {
+  if (e.target.closest("[data-rvstart]")) { startReview(); return true; }
+  if (screenName !== "review") return false;
+  if (e.target.closest("[data-rvclose]")) { rv = null; screenName = "album"; render(true); return true; }
+  if (e.target.closest("[data-rvkeep]")) { rvDecide(true); return true; }
+  if (e.target.closest("[data-rvskip]")) { rvDecide(false); return true; }
+  const alt = e.target.closest("[data-rvalt]");
+  if (alt) {
+    const it = rv.items[rv.i];
+    const k = Number(alt.dataset.rvalt);
+    const { ks } = rvPick(it);
+    if (k !== (bestPick[it.gid] ?? ks[0])) rv.swapped.add(it.gid);
+    bestPick[it.gid] = k;
+    render(true);
+    return true;
+  }
+  if (e.target.closest("[data-rvsave]")) {
+    const n = rv.kept.length;
+    rv = null; screenName = "album"; render(true);
+    toast(`${n}장을 원본으로 저장했어요`);
+    return true;
+  }
+  if (e.target.closest("[data-rvagain]")) { startReview(); return true; }
+  return false;
+}
+
+let clFrom = "album";
+function clusterClick(e) {
+  const li = e.target.closest("[data-clist]");
+  if (li) {
+    const [scope, type] = li.dataset.clist.split("|");
+    if (screenName !== "cluster") { clFrom = screenName; cl = []; }
+    cl.push({ mode: "list", scope, type });
+    screenName = "cluster"; render();
+    return true;
+  }
+  const gr = e.target.closest("[data-cgrid]");
+  if (gr) {
+    const [scope, type, key] = gr.dataset.cgrid.split("|");
+    if (screenName !== "cluster") { clFrom = screenName; cl = []; }
+    cl.push({ mode: "grid", scope, type, key });
+    screenName = "cluster"; render();
+    return true;
+  }
+  if (screenName !== "cluster") return false;
+  if (e.target.closest("[data-clback]")) {
+    cl.pop();
+    if (!cl.length) screenName = clFrom;
+    render();
+    return true;
+  }
+  const dl = e.target.closest("[data-cldl]");
+  if (dl) { toast(`${dl.dataset.cldl}장을 원본으로 저장했어요`); return true; }
+  return false;
+}
+
+function shareClick(e) {
+  const sh = e.target.closest("[data-share]");
+  if (sh) { shareFrom = screenName; qrBig = false; stopDl(); exitSelect(); screenName = "share"; render(); return true; }
+  if (screenName !== "share") return false;
+  if (e.target.closest("[data-shback]")) { qrBig = false; screenName = shareFrom === "share" ? "album" : shareFrom; render(); return true; }
+  if (e.target.closest("[data-qrbig]")) { qrBig = true; render(true); return true; }
+  if (e.target.closest("[data-qrclose]")) { qrBig = false; render(true); return true; }
+  if (e.target.closest("[data-shset]")) { states.fset = "owner"; screenName = "fset"; render(); return true; }
+  if (e.target.closest("[data-shrenew]")) {
+    if (folders[albumIdx].owner) { states.share = "default"; render(true); toast("새 링크를 만들었어요"); }
+    else toast("방장에게 새 링크를 요청했어요");
+    return true;
+  }
+  const inv = e.target.closest("[data-shinv]");
+  if (inv) {
+    const n = inv.dataset.shinv;
+    friends.find(x => x.n === n).folders.push(folders[albumIdx].name);
+    render(true);
+    toast(`${n}님에게 초대 알림을 보냈어요`);
+    return true;
+  }
+  const cp = e.target.closest("[data-copy]");
+  if (cp) {
+    try { navigator.clipboard.writeText(cp.dataset.copy).then(() => toast("링크를 복사했어요"), () => { selectUrl(); toast("링크를 길게 눌러 복사해 주세요"); }); }
+    catch (err) { selectUrl(); toast("링크를 길게 눌러 복사해 주세요"); }
+    return true;
+  }
+  return false;
+}
+
+function peLeave() { pe = null; screenName = peFrom === "pedit" ? "profile" : peFrom; render(); }
+
+function peClick(e) {
+  if (screenName !== "pedit") return false;
+  if (e.target.closest("[data-peback]")) {
+    if (!peChanged()) { peLeave(); return true; }
+    openSheet(`
+      <h3>수정한 내용을 저장하지 않고 나갈까요?</h3>
+      <p>지금 나가면 바꾼 이름과 설정이 저장되지 않아요.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>계속 수정</button>
+        <button class="btn btn-primary" type="button" data-pequit>나가기</button>
+      </div>`);
+    return true;
+  }
+  if (e.target.closest("[data-pequit]")) { closeSheet(); peLeave(); return true; }
+  if (e.target.closest("[data-pesave]")) {
+    if (!peChanged() || !peValid()) return true;
+    me.name = pe.name.trim(); settings.findByPhone = pe.find;
+    peLeave(); toast("프로필을 저장했어요");
+    return true;
+  }
+  if (e.target.closest("[data-pefind]")) { pe.find = !pe.find; render(true); return true; }
+  if (e.target.closest("[data-pephoto]")) {
+    openSheet(`
+      <h3>프로필 사진</h3>
+      <div class="opt-list">
+        <button class="opt" type="button" data-pephotoopt="앨범에서 고르기"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg><span><b>앨범에서 고르기</b></span></button>
+        <button class="opt" type="button" data-pephotoopt="사진 찍기">${camIcon}<span><b>사진 찍기</b></span></button>
+        <button class="opt" type="button" data-pephotoopt="기본 이미지"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span><b>기본 이미지로 바꾸기</b></span></button>
+      </div>
+      <button class="btn btn-soft btn-block" type="button" data-sheetclose>닫기</button>`);
+    return true;
+  }
+  const po = e.target.closest("[data-pephotoopt]");
+  if (po) {
+    closeSheet();
+    toast(po.dataset.pephotoopt === "기본 이미지" ? "기본 이미지로 바꿨어요" : `${po.dataset.pephotoopt} 화면은 아직 만들지 않았어요`);
+    return true;
+  }
+  return false;
+}
+document.addEventListener("input", e => {
+  if (!e.target.matches("[data-pename]") || !pe) return;
+  pe.name = e.target.value;
+  document.getElementById("peCount").textContent = `${pe.name.length}/10`;
+  document.getElementById("peSave").disabled = !(peChanged() && peValid());
+  document.getElementById("peHint").textContent = pe.name.trim() ? "공유 폴더의 참여자 목록과 사진의 '올린 사람'에 이 이름이 보여요." : "이름을 입력해 주세요.";
+  document.querySelector(".pf-pic").firstChild.textContent = (pe.name.trim() || me.name)[0];
+});
+
+function profileClick(e) {
+  const pr = e.target.closest("[data-profile]");
+  if (pr) {
+    closeViewer(); exitSelect();
+    if (pr.dataset.profile === "edit") { openProfileEdit(); return true; }
+    pfFrom = screenName === "profile" ? pfFrom : screenName;
+    pfTab = "mine";
+    screenName = "profile"; render();
+    return true;
+  }
+  if (peClick(e)) return true;
+  if (shareClick(e)) return true;
+  if (e.target.closest("[data-faceon]")) { settings.face = true; render(true); toast("얼굴 인식을 켰어요"); return true; }
+  const mfs = e.target.closest("[data-mfsave]");
+  if (mfs) { toast(`내 얼굴이 나온 사진 ${mfs.dataset.mfsave}장을 저장했어요`); return true; }
+  if (clusterClick(e)) return true;
+  if (reviewClick(e)) return true;
+  if (ruleClick(e)) return true;
+  if (screenName !== "profile") return false;
+  if (e.target.closest("[data-pback]")) { screenName = pfFrom; render(); return true; }
+  if (e.target.closest("[data-pfedit]")) { openProfileEdit(); return true; }
+  const tb = e.target.closest("[data-pftab]");
+  if (tb) { pfTab = tb.dataset.pftab; render(true); return true; }
+  const out = e.target.closest("[data-pfout]");
+  if (out) {
+    const del = out.dataset.pfout === "delete";
+    openSheet(`
+      <h3>${del ? "계정을 삭제할까요?" : "로그아웃할까요?"}</h3>
+      <p>${del ? "내가 만든 폴더와 올린 사진이 모두 삭제되고, 되돌릴 수 없어요. 친구가 저장한 사진은 친구 휴대폰에 남아요." : "다시 로그인하면 폴더와 사진을 그대로 볼 수 있어요."}</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-pfoutgo>${del ? "계정 삭제" : "로그아웃"}</button>
+      </div>`);
+    return true;
+  }
+  if (e.target.closest("[data-pfoutgo]")) { closeSheet(); toast("프로토타입이라 실제로 로그아웃하지는 않아요"); return true; }
+  return false;
+}
+
+let notifFrom = "home";
+function notifClick(e) {
+  if (e.target.closest("[data-notif]")) { notifFrom = screenName; closeViewer(); exitSelect(); screenName = "notif"; render(); return true; }
+  if (screenName !== "notif") return false;
+  if (e.target.closest("[data-nback]")) { screenName = notifFrom === "notif" ? "home" : notifFrom; render(); return true; }
+  if (e.target.closest("[data-nreadall]")) { notifs.forEach(n => n.read = true); render(true); toast("알림을 모두 읽었어요"); return true; }
+  const act = e.target.closest("[data-nact]");
+  if (act) {
+    const [kind, id] = act.dataset.nact.split(":");
+    const n = notifs.find(x => x.id === Number(id));
+    n.state = kind; n.read = true;
+    if (n.type === "invite" && kind === "ok" && !folders.some(f => f.name === "한강 피크닉"))
+      folders.unshift({ name: "한강 피크닉", date: "10.12", photos: 0, members: ["민", "승"], extra: 3, live: false, owner: false });
+    render(true);
+    toast(n.type === "approve" ? (kind === "ok" ? `${n.who}님을 승인했어요` : `${n.who}님의 참여를 거절했어요`)
+                               : (kind === "ok" ? "'한강 피크닉'에 참여했어요" : "초대를 거절했어요"));
+    return true;
+  }
+  const it = e.target.closest("[data-nid]");
+  if (it) {
+    const n = notifs.find(x => x.id === Number(it.dataset.nid));
+    n.read = true;
+    if (!n.go) { render(true); return true; }
+    if (n.go === "trash") { render(true); toast("휴지통 화면은 아직 만들지 않았어요"); return true; }
+    const idx = folders.findIndex(f => f.name === n.folder);
+    if (idx < 0) { render(true); toast("삭제된 폴더예요"); return true; }
+    if (n.go === "fset") { albumIdx = idx; states.fset = folders[idx].owner ? "owner" : "member"; screenName = "fset"; render(); return true; }
+    states.album = "default";
+    openAlbum(idx);
+    if (n.go === "best") { albumTab = "best"; render(); }
+    return true;
+  }
+  return false;
+}
+
+function createCta() {
+  if (!cd) return "";
+  const label = cd.step === 1 ? "다음" : cd.step === 2 ? "폴더 만들기" : "폴더로 가기";
+  const ok = cd.step !== 1 || (cd.name.trim() && hoursBetween(cd.start, cd.end) > 0);
+  return `<div class="c-cta" id="cCta"><button type="button" data-cnext id="cNext" ${ok ? "" : "disabled"}>${label}</button></div>`;
+}
+
+function refreshCreateBits() {
+  const cnt = document.getElementById("cNameCount");
+  if (cnt) cnt.textContent = `${cd.name.length}/20`;
+  const btn = document.getElementById("cNext");
+  if (btn && cd.step === 1) btn.disabled = !(cd.name.trim() && hoursBetween(cd.start, cd.end) > 0);
+}
+
+document.addEventListener("input", e => {
+  const f = e.target.closest("[data-cfield]");
+  if (!f || !cd) return;
+  const k = f.dataset.cfield;
+  cd[k] = f.value;
+  if (k === "start" && cd.dur !== "custom") cd.end = addHours(cd.start, durList.find(d => d[0] === cd.dur)[2]);
+  if (k === "start" || k === "end") {
+    const err = document.getElementById("cWhenErr");
+    if (err) err.hidden = hoursBetween(cd.start, cd.end) > 0;
+  }
+  refreshCreateBits();
+});
+
+function createClick(e) {
+  if (screenName !== "create" || !cd) return false;
+  if (e.target.closest("[data-cclose]")) {
+    if (cd.step === 3 || !cd.name.trim()) { leaveCreate(); return true; }
+    openSheet(`
+      <h3>폴더 만들기를 그만둘까요?</h3>
+      <p>지금까지 입력한 내용은 저장되지 않아요.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>계속 만들기</button>
+        <button class="btn btn-primary" type="button" data-cquit>그만두기</button>
+      </div>`);
+    return true;
+  }
+  if (e.target.closest("[data-cquit]")) { closeSheet(); leaveCreate(); return true; }
+  if (e.target.closest("[data-cprev]")) { cd.step = 1; cd.error = false; render(); return true; }
+  const du = e.target.closest("[data-dur]");
+  if (du) {
+    cd.dur = du.dataset.dur;
+    if (cd.dur !== "custom") cd.end = addHours(cd.start, durList.find(d => d[0] === cd.dur)[2]);
+    render(true);
+    return true;
+  }
+  const ct = e.target.closest("[data-ctoggle]");
+  if (ct) { const k = ct.dataset.ctoggle; cd[k] = !cd[k]; ct.setAttribute("aria-checked", String(cd[k])); return true; }
+  const cl = e.target.closest("[data-clink]");
+  if (cl) { cd.link = cl.dataset.clink; render(true); return true; }
+  const inv = e.target.closest("[data-invite]");
+  if (inv) {
+    const n = inv.dataset.invite;
+    if (cd.invited.has(n)) return true;
+    cd.invited.add(n); render(true); toast(`${n}님에게 초대 알림을 보냈어요`);
+    return true;
+  }
+  const cp = e.target.closest("[data-copy]");
+  if (cp) {
+    const url = cp.dataset.copy;
+    const done = () => toast("링크를 복사했어요");
+    try {
+      navigator.clipboard.writeText(url).then(done, () => { selectUrl(); toast("링크를 길게 눌러 복사해 주세요"); });
+    } catch (err) { selectUrl(); toast("링크를 길게 눌러 복사해 주세요"); }
+    return true;
+  }
+  if (e.target.closest("[data-cnext]")) {
+    if (cd.step === 1) { cd.step = 2; render(); return true; }
+    if (cd.step === 2) {
+      if (states.create === "fail") { cd.error = true; render(true); screen.scrollTo({ top: screen.scrollHeight, behavior: "smooth" }); return true; }
+      folders.unshift({ name: cd.name.trim(), date: `${new Date(cd.start).getMonth() + 1}.${new Date(cd.start).getDate()}`, photos: cd.withToday ? 32 : 0, members: ["승"], extra: 0, live: true, isNew: true, owner: true });
+      cd.newIdx = 0; cd.step = 3; cd.error = false;
+      render();
+      return true;
+    }
+    if (cd.step === 3) {
+      const idx = cd.newIdx;
+      const empty = folders[idx].photos === 0;
+      cd = null;
+      states.album = empty ? "empty" : "default";
+      openAlbum(idx);
+      return true;
+    }
+  }
+  return false;
+}
+function selectUrl() {
+  const el = document.getElementById("cUrl");
+  if (!el) return;
+  const r = document.createRange(); r.selectNodeContents(el);
+  const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+}
+function leaveCreate() {
+  cd = null;
+  screenName = createFrom === "create" ? "home" : createFrom;
+  render();
+}
+
+const fconfirms = {
+  end:    { t: "지금 수집을 끝낼까요?", d: "이후에 찍은 사진은 이 폴더에 올라가지 않아요. 모든 참여자에게 알림이 가요.", ok: "수집 끝내기" },
+  relink: { t: "링크를 새로 만들까요?", d: "지금 링크는 더 이상 열리지 않아요. 이미 참여한 사람은 그대로 볼 수 있어요.", ok: "새로 만들기" },
+  delete: { t: "폴더를 삭제할까요?", d: "모든 참여자의 앨범에서 이 폴더와 사진이 사라져요. 되돌릴 수 없어요.", ok: "삭제" },
+  leave:  { t: "폴더에서 나갈까요?", d: "이 폴더의 사진을 더 이상 볼 수 없어요. 내가 올린 사진은 폴더에 남아요.", ok: "나가기" },
+};
+
+/* ---------- 사진 상세 ---------- */
+let viewer = null;   // { list, i, bare, info }
+const shades = ["#3B3B3B", "#4A4A4A", "#303030", "#565656", "#424242", "#383838", "#4F4F4F"];
+const people6 = ["승은", "지민", "민서", "서연", "하준", "유나"];
+const photoGlyph = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg>';
+const fallbackReasons = ["모두 눈을 뜨고 있어요", "가장 선명해요", "표정이 가장 자연스러워요", "흔들림이 없어요", "모두 화면 안에 들어왔어요"];
+
+function parseId(id) {
+  const prefix = id[0];
+  const [di, idx] = id.slice(1).split("-").map(Number);
+  return { prefix, di, idx };
+}
+
+function groupOf(id) {
+  const { prefix, di, idx } = parseId(id);
+  if (prefix === "m") return null;
+  if (prefix === "a" && states.album === "nogroup") return null;
+  const d = (prefix === "p" ? days : albumDays)[di];
+  for (const [i0s, size] of Object.entries(d.groups)) {
+    const i0 = Number(i0s);
+    if (idx < i0 || idx >= i0 + size) continue;
+    const gid = `${prefix}${di}-${i0}`;
+    const ks = leftKs(prefix, di, i0, size);
+    if (ks.length < 2) return null;
+    const pick = ks.includes(bestPick[gid] || 0) ? (bestPick[gid] || 0) : ks[0];
+    const gi = Object.keys(d.groups).indexOf(i0s);
+    const reason = (d.reasons && d.reasons[i0s]) || fallbackReasons[(di * 2 + gi) % fallbackReasons.length];
+    return { gid, i0, ks, pick, k: idx - i0, reason, prefix, di };
+  }
+  return null;
+}
+
+function photoMeta(id) {
+  const { prefix, di, idx } = parseId(id);
+  const mine = ownedByMe(id);
+  const who = mine ? "승은" : people6[1 + ((di + idx) % 5)];
+  const h = 1 + ((idx * 5 + di) % 9), m = (idx * 7 + di * 13) % 60;
+  const time = `오후 ${h}:${String(m).padStart(2, "0")}`;
+  if (prefix === "p") {
+    const d = days[di];
+    return { title: d.folder, date: `${d.date} ${time}`, who, mine, place: d.folder === "속초 여행" ? "강원 속초시" : d.folder === "동아리 MT" ? "경기 가평군" : "서울 송파구" };
+  }
+  const d = albumDays[di];
+  return { title: folders[albumIdx].name, date: `${d.head.replace(/ (오전|오후|저녁)$/, "")} ${time}`, who, mine, place: "강원 속초시" };
+}
+
+function openViewer(id) {
+  const list = [...screen.querySelectorAll("[data-photo], [data-view]")].map(el => el.dataset.photo || el.dataset.view);
+  let i = list.indexOf(id);
+  if (i < 0) { list.unshift(id); i = 0; }
+  viewer = { list: [...new Set(list)], i, bare: false, info: false };
+  clearTimeout(toastTimer); document.getElementById("toast").classList.remove("show");
+  document.getElementById("phone").classList.add("viewing");
+  viewer.i = viewer.list.indexOf(id);
+  renderViewer();
+}
+
+function closeViewer() {
+  viewer = null;
+  document.getElementById("phone").classList.remove("viewing");
+  document.getElementById("viewer").hidden = true;
+}
+
+function renderViewer() {
+  const el = document.getElementById("viewer");
+  if (!viewer) { el.hidden = true; return; }
+  const id = viewer.list[viewer.i];
+  const { idx, di } = parseId(id);
+  const meta = photoMeta(id);
+  const g = groupOf(id);
+  const isBest = g && g.k === g.pick;
+  const ico = {
+    close: '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    save:  '<svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>',
+    share: '<svg viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>',
+    info:  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>',
+  };
+  el.hidden = false;
+  el.classList.toggle("bare", viewer.bare);
+  el.innerHTML = `
+    <div class="v-top">
+      <button class="icon-btn" type="button" data-vclose aria-label="닫기">${ico.close}</button>
+      <div class="v-meta"><b>${meta.title}</b><small>${meta.date} · ${meta.mine ? "내가 올림" : `${meta.who}님이 올림`}</small></div>
+      <span class="v-count">${viewer.i + 1} / ${viewer.list.length}</span>
+    </div>
+    <div class="v-stage" id="vStage">
+      <div class="v-photo" style="background:${shades[(di * 3 + idx) % shades.length]}">${photoGlyph}</div>
+      <button class="v-nav prev" type="button" data-vnav="-1" aria-label="이전 사진" ${viewer.i === 0 ? "disabled" : ""}>‹</button>
+      <button class="v-nav next" type="button" data-vnav="1" aria-label="다음 사진" ${viewer.i === viewer.list.length - 1 ? "disabled" : ""}>›</button>
+    </div>
+    ${g ? `
+    <div class="v-best">
+      ${isBest ? `<span class="pill">BEST</span><p>${g.reason}</p>` : `<p style="color:#BDBDBD;font-weight:500">비슷한 사진 ${g.ks.length}장 중 하나예요</p><button class="set" type="button" data-vsetbest>이 컷을 BEST로</button>`}
+    </div>
+    <div class="v-strip" aria-label="같은 묶음 사진">
+      ${g.ks.map(k => {
+        const tid = `${g.prefix}${g.di}-${g.i0 + k}`;
+        return `<button class="v-thumb" type="button" data-vthumb="${tid}" aria-current="${tid === id}" aria-label="묶음 ${k + 1}번째 사진" style="background:${shades[(g.di * 3 + g.i0 + k) % shades.length]}">${k === g.pick ? "<i>BEST</i>" : ""}</button>`;
+      }).join("")}
+    </div>` : ""}
+    ${viewer.info ? `
+    <div class="v-info">
+      <dl>
+        <dt>찍은 시간</dt><dd>${meta.date}</dd>
+        <dt>올린 사람</dt><dd>${meta.mine ? "나 (승은)" : meta.who}</dd>
+        <dt>장소</dt><dd>${meta.place}</dd>
+        <dt>크기</dt><dd>4032 × 3024 · ${(4.2 + (idx % 5) * 0.3).toFixed(1)}MB</dd>
+      </dl>
+    </div>` : ""}
+    <div class="v-actions">
+      <button class="v-act" type="button" data-vsave>${ico.save}저장</button>
+      <button class="v-act" type="button" data-msg="공유 화면은 아직 만들지 않았어요">${ico.share}공유</button>
+      <button class="v-act" type="button" data-vinfo aria-pressed="${viewer.info}">${ico.info}정보</button>
+      <button class="v-act${meta.mine ? "" : " locked"}" type="button" data-vdel>${ico.trash}삭제</button>
+    </div>`;
+}
+
+function stepViewer(d) {
+  if (!viewer) return;
+  const n = viewer.i + d;
+  if (n < 0 || n >= viewer.list.length) return;
+  viewer.i = n; viewer.info = false;
+  renderViewer();
+}
+
+// 사진을 좌우로 밀어 넘기기, 짧게 누르면 화면 정보 숨기기/보이기
+let vDown = null;
+document.addEventListener("pointerdown", e => {
+  if (!viewer || !e.target.closest("#vStage") || e.target.closest(".v-nav")) return;
+  vDown = { x: e.clientX, y: e.clientY };
+});
+document.addEventListener("pointerup", e => {
+  if (!viewer || !vDown) return;
+  const dx = e.clientX - vDown.x, dy = e.clientY - vDown.y;
+  vDown = null;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { stepViewer(dx < 0 ? 1 : -1); return; }
+  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { viewer.bare = !viewer.bare; document.getElementById("viewer").classList.toggle("bare", viewer.bare); }
+});
+document.addEventListener("keydown", e => {
+  if (!viewer) return;
+  if (e.key === "Escape") closeViewer();
+  if (e.key === "ArrowRight") stepViewer(1);
+  if (e.key === "ArrowLeft") stepViewer(-1);
+});
+
+function viewerClick(e) {
+  if (e.target.closest("[data-vclose]")) { closeViewer(); return true; }
+  const nav = e.target.closest("[data-vnav]");
+  if (nav) { stepViewer(Number(nav.dataset.vnav)); return true; }
+  const th = e.target.closest("[data-vthumb]");
+  if (th) {
+    const id = th.dataset.vthumb;
+    if (!viewer.list.includes(id)) viewer.list.splice(viewer.i + 1, 0, id);
+    viewer.i = viewer.list.indexOf(id); viewer.info = false;
+    renderViewer();
+    return true;
+  }
+  if (e.target.closest("[data-vinfo]")) { viewer.info = !viewer.info; renderViewer(); return true; }
+  if (e.target.closest("[data-vsave]")) { toast("원본으로 저장했어요"); return true; }
+  if (e.target.closest("[data-vsetbest]")) {
+    const id = viewer.list[viewer.i];
+    const g = groupOf(id);
+    bestPick[g.gid] = g.k;
+    renderViewer(); render(true);
+    toast("BEST 사진을 바꿨어요");
+    return true;
+  }
+  if (e.target.closest("[data-vdel]")) {
+    const id = viewer.list[viewer.i];
+    if (!ownedByMe(id)) { toast("친구가 올린 사진은 올린 사람만 지울 수 있어요"); return true; }
+    openSheet(`
+      <h3>이 사진을 삭제할까요?</h3>
+      <p>휴지통으로 옮겨지고, 30일 안에 되돌릴 수 있어요.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-vdelgo>삭제</button>
+      </div>`);
+    return true;
+  }
+  return false;
+}
+
+/* ---------- 렌더 ---------- */
+function renderSwitcher() {
+  const cur = states[screenName];
+  switcher.innerHTML = `<span>${screenTitles[screenName]} 상태</span>` +
+    stateLabels[screenName].map(([k, l]) =>
+      `<button type="button" data-state="${k}" aria-pressed="${k === cur}">${l}</button>`).join("");
+}
+
+
+function render(keepScroll) {
+  lastTop = keepScroll ? screen.scrollTop : 0;
+  const top = screen.scrollTop;
+  const views = { home: homeViews, photos: photoViews, album: albumViews, menu: menuViews, fset: fsetViews, create: createViews, notif: notifViews, profile: profileViews, pedit: peditViews, share: shareViews, cluster: clusterViews, review: reviewViews }[screenName];
+  screen.innerHTML = views[states[screenName]]();
+  screen.scrollTop = keepScroll ? top : 0;
+  document.querySelectorAll(".tab[data-screen]").forEach(t => {
+    if (t.dataset.screen === screenName) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
+  });
+  renderSwitcher();
+  renderCal();
+  renderAlbumChrome();
+}
+
+// 아래로 스크롤하면 상단 영역을 숨기고, 위로 스크롤하면 다시 보여준다
+let lastTop = 0;
+let holdBarUntil = 0;   // 날짜 이동처럼 코드가 스크롤할 때는 상단 영역을 유지
+screen.addEventListener("scroll", () => {
+  const st = screen.querySelector(".sticky");
+  const y = screen.scrollTop;
+  if (st) {
+    st.classList.toggle("scrolled", y > 4);
+    const dy = y - lastTop;
+    if (Date.now() < holdBarUntil || y < st.offsetHeight) st.classList.remove("hide");
+    else if (dy > 6) st.classList.add("hide");
+    else if (dy < -6) st.classList.remove("hide");
+    // 공유 앨범: 본문의 다운로드 버튼이 지나가면 상단 바 아래에 다운로드 버튼을 붙인다
+    const inflow = screen.querySelector(".dl-inflow");
+    if (inflow) st.classList.toggle("past", y > inflow.offsetTop - screen.offsetTop + inflow.offsetHeight - st.offsetHeight);
+  }
+  if (Math.abs(y - lastTop) > 6 || y < 4) lastTop = y;
+}, { passive: true });
+
+function renderCal() {
+  const show = calOpen && screenName === "photos" && states.photos === "default";
+  document.getElementById("calLayer").hidden = !show;
+  document.getElementById("calPop").innerHTML = show ? calendar() : "";
+}
+
+function closeCal() { calOpen = false; }
+
+let toastTimer;
+const BEST_HINT = "사진을 길게 누르면 BEST컷으로 변경돼요";
+function toast(msg, ms = 1800) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+document.addEventListener("click", e => {
+  if (longPressed || Date.now() < suppressClickUntil) { longPressed = false; return; }
+  if (e.target.closest("[data-vdelgo]")) {
+    const id = viewer.list[viewer.i];
+    deleted.add(id); trashCount++;
+    viewer.list.splice(viewer.i, 1);
+    closeSheet();
+    render(true);
+    if (!viewer.list.length) closeViewer();
+    else { viewer.i = Math.min(viewer.i, viewer.list.length - 1); renderViewer(); }
+    toast("휴지통으로 옮겼어요");
+    return;
+  }
+  if (viewer && e.target.closest("#viewer")) {
+    if (viewerClick(e)) return;
+    const vm = e.target.closest("[data-msg]");
+    if (vm) toast(vm.dataset.msg);
+    return;
+  }
+  const vw = e.target.closest("[data-view]");
+  if (vw && !selecting) { openViewer(vw.dataset.view); return; }
+  const sw = e.target.closest("#switcher button");
+  if (sw) {
+    const s = sw.dataset.state;
+    if (screenName === "home" && s === "default") suggestOpen = true;
+    if (screenName === "photos" && s !== "default") closeCal();
+    exitSelect();
+    closeViewer();
+    if (screenName === "album") { openGroup = null; stopDl(); closeSheet(); if (s === "nogroup" && albumTab === "best") albumTab = "all"; }
+    states[screenName] = s;
+    render();
+    return;
+  }
+  const tab = e.target.closest(".tab[data-screen]");
+  if (tab) {
+    if (tab.dataset.screen === "menu" && menuSub) { menuSub = null; screenName = "menu"; render(); return; }
+    if (tab.dataset.screen !== screenName) { screenName = tab.dataset.screen; closeCal(); exitSelect(); render(); }
+    return;
+  }
+  if (e.target.closest("[data-close]")) { suggestOpen = false; render(true); return; }
+
+  // 옵션 · 선택 모드 · 비슷한 사진 삭제
+  const op = e.target.closest("[data-opts]");
+  if (op) { openSheet(optionsSheet(op.dataset.opts)); return; }
+  const opt = e.target.closest("[data-opt]");
+  if (opt) {
+    const k = opt.dataset.opt;
+    closeSheet();
+    if (k === "select") {
+      selecting = true; selected.clear(); expanded.clear(); openGroup = null;
+      if (screenName === "photos" && chip !== "all" && chip !== "best") chip = "all";
+      if (screenName === "album" && albumTab === "best") albumTab = "all";
+      render(true);
+      return;
+    }
+    if (k === "fset") { stopDl(); states.fset = folders[albumIdx].owner ? "owner" : "member"; screenName = "fset"; render(); return; }
+    if (k === "delfolder" || k === "leavefolder") {
+      const c = fconfirms[k === "delfolder" ? "delete" : "leave"];
+      openSheet(`
+        <h3>${c.t}</h3>
+        <p>${c.d}</p>
+        <div class="sheet-actions">
+          <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+          <button class="btn btn-primary" type="button" data-fdo="${k === "delfolder" ? "delete" : "leave"}">${c.ok}</button>
+        </div>`);
+      return;
+    }
+    if (k === "dedupe") {
+      const prefix = screenName === "photos" ? "p" : "a";
+      const grouped = !(screenName === "album" && states.album === "nogroup");
+      const { mine, others } = grouped ? dedupeCandidates(prefix) : { mine: [], others: [] };
+      if (!mine.length) { toast(others.length ? "내가 올린 비슷한 사진이 없어요" : "정리할 비슷한 사진이 없어요"); return; }
+      openSheet(`
+        <h3>비슷한 사진 ${mine.length}장을 삭제할까요?</h3>
+        <p>묶음마다 BEST컷 1장만 남기고 나머지를 휴지통으로 옮겨요. 30일 안에 되돌릴 수 있어요.${others.length ? `<br>친구가 올린 ${others.length}장은 올린 사람만 지울 수 있어서 남겨 둬요.` : ""}</p>
+        <div class="sheet-actions">
+          <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+          <button class="btn btn-primary" type="button" data-dedupego="${prefix}">${mine.length}장 삭제</button>
+        </div>`);
+      return;
+    }
+  }
+  const dg = e.target.closest("[data-dedupego]");
+  if (dg) {
+    const { mine } = dedupeCandidates(dg.dataset.dedupego);
+    mine.forEach(id => deleted.add(id));
+    trashCount += mine.length;
+    expanded.clear(); openGroup = null;
+    closeSheet();
+    render(true);
+    toast(`${mine.length}장을 휴지통으로 옮겼어요`);
+    return;
+  }
+  if (e.target.closest("[data-selcancel]")) { exitSelect(); render(true); return; }
+  if (e.target.closest("[data-selsave]")) {
+    const n = selected.size;
+    exitSelect(); render(true);
+    toast(`${n}장을 원본으로 저장했어요`);
+    return;
+  }
+  if (selecting && e.target.closest("[data-selall]")) {
+    const ids = [...screen.querySelectorAll("[data-photo]")].map(el => el.dataset.photo);
+    const allOn = ids.every(id => selected.has(id));
+    ids.forEach(id => allOn ? selected.delete(id) : selected.add(id));
+    screen.querySelectorAll("[data-photo]").forEach(el => el.setAttribute("aria-pressed", String(selected.has(el.dataset.photo))));
+    updateSelbar();
+    return;
+  }
+  if (selecting && e.target.closest("[data-seldel]")) {
+    if (!selected.size) { toast("삭제할 사진을 골라 주세요"); return; }
+    const ids = [...selected];
+    const mineIds = ids.filter(ownedByMe), others = ids.length - mineIds.length;
+    if (!mineIds.length) { toast("친구가 올린 사진은 올린 사람만 지울 수 있어요"); return; }
+    openSheet(`
+      <h3>사진 ${mineIds.length}장을 삭제할까요?</h3>
+      <p>휴지통으로 옮겨지고, 30일 안에 되돌릴 수 있어요.${others ? `<br>고른 사진 중 친구가 올린 ${others}장은 올린 사람만 지울 수 있어서 남겨 둬요.` : ""}</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-seldelgo>${mineIds.length}장 삭제</button>
+      </div>`);
+    return;
+  }
+  if (e.target.closest("[data-seldelgo]")) {
+    const mineIds = [...selected].filter(ownedByMe);
+    mineIds.forEach(id => deleted.add(id));
+    trashCount += mineIds.length;
+    exitSelect(); closeSheet(); render(true);
+    toast(`${mineIds.length}장을 휴지통으로 옮겼어요`);
+    return;
+  }
+  if (selecting) {
+    const ph = e.target.closest("[data-photo]");
+    if (ph) {
+      const id = ph.dataset.photo;
+      selected.has(id) ? selected.delete(id) : selected.add(id);
+      ph.setAttribute("aria-pressed", String(selected.has(id)));
+      updateSelbar();
+      return;
+    }
+  }
+
+  // 프로필
+  if (profileClick(e)) return;
+
+  // 알림
+  if (notifClick(e)) return;
+
+  // 폴더 만들기
+  if (createClick(e)) return;
+  const cr = e.target.closest("[data-create]");
+  if (cr) { openCreate(cr.dataset.create || ""); return; }
+  if (e.target.closest("#fab") && screenName !== "album" && !selecting) { openCreate(""); return; }
+
+  // 폴더 설정
+  if (e.target.closest("[data-fset]")) { stopDl(); states.fset = folders[albumIdx].owner ? "owner" : "member"; screenName = "fset"; render(); return; }
+  if (e.target.closest("[data-fback]")) { closeSheet(); screenName = "album"; render(); return; }
+  const ft = e.target.closest("[data-ftoggle]");
+  if (ft) { const k = ft.dataset.ftoggle; fset[k] = !fset[k]; render(true); return; }
+  const lk = e.target.closest("[data-link]");
+  if (lk) { fset.link = lk.dataset.link; render(true); return; }
+  if (e.target.closest("[data-extend]")) {
+    if (fset.extend >= 6) { toast("최대 6시간까지 연장할 수 있어요"); return; }
+    fset.extend++; render(true); toast("수집 시간을 1시간 연장했어요"); return;
+  }
+  const fc = e.target.closest("[data-fconfirm]");
+  if (fc) {
+    const c = fconfirms[fc.dataset.fconfirm];
+    openSheet(`
+      <h3>${c.t}</h3>
+      <p>${c.d}</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-fdo="${fc.dataset.fconfirm}">${c.ok}</button>
+      </div>`);
+    return;
+  }
+  const fd = e.target.closest("[data-fdo]");
+  if (fd) {
+    closeSheet();
+    const k = fd.dataset.fdo;
+    if (k === "end") { folders[albumIdx].live = false; render(true); toast("수집을 끝냈어요"); }
+    if (k === "relink") toast("새 링크를 만들었어요");
+    if (k === "delete" || k === "leave") {
+      const name = folders[albumIdx].name;
+      stopDl();
+      folders.splice(albumIdx, 1);
+      albumIdx = 0;
+      screenName = "home";
+      render();
+      toast(k === "delete" ? `'${name}' 폴더를 삭제했어요` : `'${name}' 폴더에서 나갔어요`);
+    }
+    return;
+  }
+
+  // 메뉴
+  const ms = e.target.closest("[data-msub]");
+  if (ms) { menuSub = ms.dataset.msub; render(); return; }
+  if (e.target.closest("[data-mback]")) { fEdit = false; fSel.clear(); menuSub = menuSub && menuSub.startsWith("friend:") ? "friends" : null; render(); return; }
+  const fh = e.target.closest("[data-fhide]");
+  if (fh) { hiddenFriends.add(fh.dataset.fhide); menuSub = "friends"; render(); toast(`${fh.dataset.fhide}님을 숨겼어요`); return; }
+  if (e.target.closest("[data-funhide]")) { hiddenFriends.clear(); render(true); toast("숨긴 사람을 다시 보이게 했어요"); return; }
+  const fi = e.target.closest("[data-finvite]");
+  if (fi) { openInviteSheet([fi.dataset.finvite]); return; }
+  const into = e.target.closest("[data-finto]");
+  if (into) {
+    const f = folders[Number(into.dataset.finto)];
+    const newOnes = inviteNames.filter(n => !friends.find(x => x.n === n).folders.includes(f.name));
+    newOnes.forEach(n => friends.find(x => x.n === n).folders.push(f.name));
+    closeSheet(); fEdit = false; fSel.clear(); render(true);
+    toast(`${newOnes.length > 2 ? `${newOnes[0]}님 외 ${newOnes.length - 1}명` : newOnes.map(n => `${n}님`).join(", ")}을 '${f.name}'에 초대했어요`);
+    return;
+  }
+  if (e.target.closest("[data-finnew]")) { closeSheet(); fEdit = false; fSel.clear(); inviteToNew(inviteNames); return; }
+  // 친구 편집 모드
+  const fp = e.target.closest("[data-fpick]");
+  if (fp) {
+    const n = fp.dataset.fpick;
+    fSel.has(n) ? fSel.delete(n) : fSel.add(n);
+    render(true);
+    return;
+  }
+  if (e.target.closest("[data-fall]")) {
+    const all = visibleFriends().every(f => fSel.has(f.n));
+    visibleFriends().forEach(f => all ? fSel.delete(f.n) : fSel.add(f.n));
+    render(true);
+    return;
+  }
+  if (e.target.closest("[data-fcancel]")) { fEdit = false; fSel.clear(); render(true); return; }
+  if (e.target.closest("[data-fhidesel]")) {
+    const n = fSel.size;
+    fSel.forEach(x => hiddenFriends.add(x));
+    fEdit = false; fSel.clear(); render(true);
+    toast(`${n}명을 숨겼어요`);
+    return;
+  }
+  if (e.target.closest("[data-finvsel]")) {
+    openInviteSheet([...fSel]);
+    return;
+  }
+  const tg = e.target.closest("[data-toggle]");
+  if (tg) {
+    const k = tg.dataset.toggle;
+    settings[k] = !settings[k];
+    tg.setAttribute("aria-checked", String(settings[k]));
+    return;
+  }
+
+  // 공유 앨범
+  const alb = e.target.closest("[data-album]");
+  if (alb) { openAlbum(Number(alb.dataset.album)); return; }
+  if (e.target.closest("[data-back]")) { stopDl(); closeSheet(); exitSelect(); screenName = albumFrom; render(true); return; }
+  const at = e.target.closest("[data-atab]");
+  if (at) { albumTab = at.dataset.atab; openGroup = null; if (albumTab === "best") exitSelect(); render(true); return; }
+  if (e.target.closest("[data-dl]")) {
+    if (dl.running) return;
+    const n = folders[albumIdx].photos;
+    openSheet(`
+      <h3>${n}장 · ${sizeOf(n)}를 원본 화질로 저장할까요?</h3>
+      <p>휴대폰 사진 앱에 저장돼요. 내가 찍은 사진은 이미 있어서 건너뛰어요.</p>
+      <div class="sheet-actions">
+        <button class="btn btn-soft" type="button" data-sheetclose>취소</button>
+        <button class="btn btn-primary" type="button" data-dlgo>저장</button>
+      </div>`);
+    return;
+  }
+  if (e.target.closest("[data-dlgo]")) { closeSheet(); startDl(); return; }
+  if (e.target.closest("[data-sheetclose]")) { closeSheet(); return; }
+  const sb = e.target.closest("[data-setbest]");
+  if (sb) {
+    const [gid, k] = sb.dataset.setbest.split(":");
+    bestPick[gid] = Number(k);
+    closeSheet();
+    render(true);
+    toast("BEST 사진을 바꿨어요");
+    return;
+  }
+  if (e.target.closest("[data-aisave]")) { toast(`추천 사진 ${groupCount}장을 원본으로 저장했어요`); return; }
+  const ag = e.target.closest("[data-agroup]");
+  if (ag && openGroup !== ag.dataset.agroup) { openGroup = ag.dataset.agroup; render(true); toast(BEST_HINT, 3500); return; }
+  if (e.target.closest("[data-retry]")) {
+    const which = screenName;
+    states[which] = "loading"; render();
+    setTimeout(() => { if (states[which] === "loading") { states[which] = "default"; if (screenName === which) render(); } }, 1200);
+    return;
+  }
+  if (e.target.closest("[data-reset]")) { chip = "all"; pickedDate = null; states.photos = "default"; render(); return; }
+  if (e.target.closest("[data-cal]")) { calOpen = !calOpen; render(true); return; }
+  if (e.target.closest("[data-calclose]")) { calOpen = false; renderCal(); render(true); return; }
+  const mo = e.target.closest("[data-month]");
+  if (mo) {
+    calM += Number(mo.dataset.month);
+    if (calM < 0) { calM = 11; calY--; } else if (calM > 11) { calM = 0; calY++; }
+    render(true);
+    return;
+  }
+  const dayBtn = e.target.closest("[data-day]");
+  if (dayBtn) {
+    const iso = dayBtn.dataset.day;
+    if (!days.some(d => d.iso === iso)) { toast(`${labelOf(iso)}에 찍은 사진이 없어요`); return; }
+    pickedDate = iso;
+    calOpen = false;
+    if (chip !== "all" && chip !== "best") chip = "all";
+    render();
+    const target = document.getElementById(`day-${iso}`);
+    const bar = screen.querySelector(".sticky");
+    holdBarUntil = Date.now() + 900;
+    if (target) screen.scrollTo({ top: target.offsetTop - screen.offsetTop - (bar ? bar.offsetHeight : 0) - 8, behavior: "smooth" });
+    return;
+  }
+  const c = e.target.closest("[data-chip]");
+  if (c) {
+    chip = c.dataset.chip;
+    if (chip !== "all" && chip !== "best") exitSelect();
+    render(true);
+    return;
+  }
+  // 묶음 BEST 사진: 첫 클릭은 묶음 펼치기(한 번에 한 묶음만), 펼친 뒤 다시 클릭하면 사진 상세
+  const grp = e.target.closest("[data-group]");
+  if (grp && !expanded.has(grp.dataset.group)) {
+    expanded.clear();
+    expanded.add(grp.dataset.group);
+    render(true);
+    toast(BEST_HINT, 3500);
+    return;
+  }
+  const p = e.target.closest("[data-photo]");
+  if (p) {
+    openViewer(p.dataset.photo);
+    return;
+  }
+  const m = e.target.closest("[data-msg]");
+  if (m && !m.disabled) toast(m.dataset.msg);
+});
+
+render();
+</script>

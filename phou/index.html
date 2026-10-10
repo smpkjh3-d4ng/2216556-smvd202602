@@ -1,3 +1,16 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="서비스명">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>사진 공유 앱 홈 화면</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,7 +144,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .cal-head b { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cal-nav { display: flex; gap: 4px; }
 .cal-nav button { width: 32px; height: 32px; border-radius: 50%; font-size: 18px; color: var(--fg); }
-.cal-nav button:hover { background: var(--accent-soft); }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
 .cal-wd { font-size: 11px; color: var(--sub); padding-bottom: 4px; }
 .cal-grid { row-gap: 4px; }
@@ -378,7 +390,6 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ph { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
 .opt-list { display: flex; flex-direction: column; margin-inline: -8px; }
 .opt { display: flex; align-items: center; gap: 14px; padding: 12px 8px; border-radius: 12px; text-align: left; width: 100%; }
-.opt:hover { background: var(--accent-soft); }
 .opt svg { width: 22px; height: 22px; stroke: var(--fg); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .opt b { display: block; font-size: 15px; font-weight: 600; }
 .opt small { display: block; font-size: 12px; color: var(--sub); margin-top: 2px; }
@@ -461,7 +472,6 @@ textarea.inp { height: 84px; padding: 12px 14px; resize: none; line-height: 1.5;
 .f-row .chev { color: var(--sub); font-size: 18px; }
 .inv-list { display: flex; flex-direction: column; margin-inline: -8px; }
 .inv-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 12px; text-align: left; width: 100%; }
-.inv-row:hover:not(:disabled) { background: var(--accent-soft); }
 .inv-row:disabled { opacity: .45; cursor: default; }
 .inv-row .row-thumb { width: 52px; height: 52px; border-radius: 10px; }
 .inv-row .txt { flex: 1; min-width: 0; }
@@ -653,6 +663,81 @@ textarea.inp { height: 84px; padding: 12px 14px; resize: none; line-height: 1.5;
 .row-face.sm { width: 36px; height: 36px; font-size: 13px; }
 .danger-btn { width: 100%; height: 50px; border-radius: 12px; border: 1px solid var(--line); font-size: 15px; font-weight: 600; color: var(--fg); }
 .btn-strong { background: var(--fg); color: #fff; }
+
+/* ---------- 모바일: 실제 휴대폰에서 앱처럼 ---------- */
+:root { --sat: 0px; --sab: 0px; }
+html { -webkit-text-size-adjust: 100%; }
+button, a, [role="switch"] { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.phone { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.phone input, .phone textarea, .phone code { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+.scroll { overscroll-behavior: contain; }
+.sheet { overscroll-behavior: contain; touch-action: pan-y; transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+.sheet.dragging { transition: none; }
+.sheet-layer.closing { pointer-events: none; }
+.sheet-layer.closing .sheet { transform: translateY(100%) !important; }
+.sheet-layer.closing .cal-dim { opacity: 0; transition: opacity .2s; }
+.v-photo.dragging { transition: none; }
+@media (hover: hover) {
+  .cal-nav button:hover, .opt:hover, .inv-row:hover:not(:disabled) { background: var(--accent-soft); }
+}
+@media (hover: none) {
+  button:active:not(:disabled):not(.switch):not(.ph):not(.tab), .row:active, .m-row:is(button):active { opacity: .6; }
+  .ph:active { filter: brightness(.92); }
+  .opt:active, .inv-row:active:not(:disabled) { background: var(--accent-soft); opacity: 1; }
+  .tab:active svg { transform: scale(.9); }
+}
+.toast { max-width: calc(100% - 32px); white-space: normal; text-align: center; width: max-content; }
+
+/* 개발용 상태 전환 패널 (휴대폰에서는 두 손가락으로 탭하면 열림) */
+.dev-close { display: none; }
+
+@media (max-width: 600px) {
+  :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { padding: 0; background: var(--bg); touch-action: pan-x pan-y; }
+  .phone {
+    position: fixed; left: 0; right: 0; top: 0; height: 100%;
+    max-width: none; min-height: 0; margin: 0;
+    border: 0; border-radius: 0; box-shadow: none;
+  }
+  /* 상단 노치 영역 가림막 */
+  .phone::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--sat); background: var(--bg); z-index: 7; pointer-events: none; }
+  .phone.viewing::before { background: #0B0B0B; z-index: 9; }
+  .scroll { padding-top: calc(20px + var(--sat)); scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .sticky { margin-top: calc(-20px - var(--sat)); padding-top: calc(20px + var(--sat)); }
+  .inp, .when .inp, .air-input .inp { font-size: 16px; }
+  .cal-pop { top: calc(76px + var(--sat)); }
+  .qr-full { padding: calc(24px + var(--sat)) 24px calc(24px + var(--sab)); }
+  .v-top { padding-top: calc(14px + var(--sat)); }
+
+  .switcher {
+    position: fixed; z-index: 100; left: 12px; right: 12px; top: calc(8px + var(--sat));
+    max-width: none; margin: 0; padding: 12px; border-radius: 16px;
+    background: var(--bg); box-shadow: 0 10px 40px rgba(0,0,0,.25);
+    display: none;
+  }
+  body.dev-open .switcher { display: flex; }
+  .dev-close { display: inline-flex; margin-left: auto; }
+}
+
+/* 아래쪽 안전 영역 (홈 인디케이터) */
+.tabbar { padding-bottom: calc(12px + var(--sab)); }
+.fab { bottom: calc(82px + var(--sab)); }
+.phone.in-album .fab { bottom: calc(20px + var(--sab)); }
+.phone.in-album.ai-bar .fab { bottom: calc(88px + var(--sab)); }
+.toast { bottom: calc(150px + var(--sab)); }
+.phone.in-album .toast { bottom: calc(92px + var(--sab)); }
+.phone.in-album.ai-bar .toast { bottom: calc(160px + var(--sab)); }
+.phone.in-create .toast { bottom: calc(96px + var(--sab)); }
+.phone.in-profile .toast, .phone.in-notif .toast, .phone.in-fset .toast { bottom: calc(28px + var(--sab)); }
+.phone.viewing .toast { bottom: auto; top: calc(76px + var(--sat)); }
+.scroll { padding-bottom: calc(88px + var(--sab)); }
+.phone.ai-bar .scroll { padding-bottom: calc(170px + var(--sab)); }
+.selbar, .c-cta { padding-bottom: calc(16px + var(--sab)); }
+.ai-bar-el { padding-bottom: calc(14px + var(--sab)); }
+.sheet { padding-bottom: calc(22px + var(--sab)); }
+.v-actions { padding-bottom: calc(16px + var(--sab)); }
 
 @media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
 </style>

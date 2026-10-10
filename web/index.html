@@ -266,12 +266,13 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .dev-close { display: block; align-self: flex-end; font-size: 12px; padding: 6px 12px; border-radius: 999px; background: var(--fg); color: #fff; }
 }
 
-/* 스크롤바: 휴대폰처럼 얇고 투명하게 */
-.scroll::-webkit-scrollbar, .sheet::-webkit-scrollbar { width: 4px; height: 4px; }
-.scroll::-webkit-scrollbar-track, .sheet::-webkit-scrollbar-track { background: transparent; }
-.scroll::-webkit-scrollbar-thumb, .sheet::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 2px; }
-.scroll::-webkit-scrollbar-thumb:active, .sheet::-webkit-scrollbar-thumb:active { background: rgba(0,0,0,.38); }
-@supports (-moz-appearance: none) { .scroll, .sheet { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.22) transparent; } }
+/* 스크롤 표시: 갤러리처럼 스크롤할 때만 짧고 가는 막대가 잠깐 보였다가 사라진다 */
+.scroll, .sheet { scrollbar-width: none; }
+.scroll::-webkit-scrollbar, .sheet::-webkit-scrollbar { display: none; }
+.sb-ind { position: absolute; width: 3px; border-radius: 2px; background: rgba(0,0,0,.24); opacity: 0; pointer-events: none; z-index: 6; transition: opacity .35s ease; }
+.sb-ind.on { opacity: 1; transition: opacity .12s ease; }
+.sat-probe { position: absolute; top: 0; left: 0; width: 0; height: var(--sat); visibility: hidden; pointer-events: none; }
+
 
 @media (prefers-reduced-motion: reduce)
 
@@ -907,6 +908,32 @@ if (window.visualViewport) {
   vv.addEventListener("scroll", fit);
   fit();
 }
+
+// 스크롤 표시: 스크롤하는 동안만 짧고 가는 막대를 보여주고, 멈추면 잠시 뒤 사라진다
+const satProbe = Object.assign(document.createElement("div"), { className: "sat-probe" });
+document.getElementById("phone").appendChild(satProbe);
+function scrollIndicator(scroller, host, topInset = () => 0) {
+  const bar = Object.assign(document.createElement("div"), { className: "sb-ind" });
+  bar.setAttribute("aria-hidden", "true");
+  host.appendChild(bar);
+  let timer;
+  scroller.addEventListener("scroll", () => {
+    const max = scroller.scrollHeight - scroller.clientHeight;
+    if (max <= 2) return;
+    const hr = host.getBoundingClientRect(), sr = scroller.getBoundingClientRect();
+    const inset = topInset();
+    const track = sr.height - inset - 12;
+    const h = Math.max(40, Math.min(56, track * scroller.clientHeight / scroller.scrollHeight));
+    bar.style.height = `${h}px`;
+    bar.style.top = `${sr.top - hr.top + inset + 6 + (track - h) * Math.min(1, Math.max(0, scroller.scrollTop / max))}px`;
+    bar.style.right = `${hr.right - sr.right + 4}px`;
+    bar.classList.add("on");
+    clearTimeout(timer);
+    timer = setTimeout(() => bar.classList.remove("on"), 900);
+  }, { passive: true });
+}
+scrollIndicator(screenEl, document.getElementById("phone"), () => satProbe.offsetHeight);
+scrollIndicator(document.getElementById("sheet"), document.getElementById("layer"));
 
 render();
 </script>

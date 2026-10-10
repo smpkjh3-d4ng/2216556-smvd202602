@@ -257,8 +257,7 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .phone::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--sat); background: var(--bg); z-index: 7; pointer-events: none; }
   .phone.viewing::before { background: #0B0B0B; z-index: 9; }
   .urlbar { display: none; }
-  .scroll { padding-top: var(--sat); scrollbar-width: none; }
-  .scroll::-webkit-scrollbar { display: none; }
+  .scroll { padding-top: var(--sat); }
   .al-bar { margin-top: calc(-1 * var(--sat)); padding-top: calc(10px + var(--sat)); }
   .v-top { padding-top: calc(12px + var(--sat)); }
   .dev { position: fixed; z-index: 100; left: 12px; right: 12px; top: calc(8px + var(--sat)); display: none; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: var(--bg); box-shadow: 0 10px 40px rgba(0,0,0,.25); }
@@ -267,7 +266,15 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .dev-close { display: block; align-self: flex-end; font-size: 12px; padding: 6px 12px; border-radius: 999px; background: var(--fg); color: #fff; }
 }
 
+/* 스크롤바: 휴대폰처럼 얇고 투명하게 */
+.scroll::-webkit-scrollbar, .sheet::-webkit-scrollbar { width: 4px; height: 4px; }
+.scroll::-webkit-scrollbar-track, .sheet::-webkit-scrollbar-track { background: transparent; }
+.scroll::-webkit-scrollbar-thumb, .sheet::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 2px; }
+.scroll::-webkit-scrollbar-thumb:active, .sheet::-webkit-scrollbar-thumb:active { background: rgba(0,0,0,.38); }
+@supports (-moz-appearance: none) { .scroll, .sheet { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.22) transparent; } }
+
 @media (prefers-reduced-motion: reduce)
+
  { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 

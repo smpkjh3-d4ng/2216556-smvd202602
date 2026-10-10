@@ -719,8 +719,7 @@ button, a, [role="switch"] { -webkit-tap-highlight-color: transparent; touch-act
   /* 상단 노치 영역 가림막 */
   .phone::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--sat); background: var(--bg); z-index: 7; pointer-events: none; }
   .phone.viewing::before { background: #0B0B0B; z-index: 9; }
-  .scroll { padding-top: calc(20px + var(--sat)); scrollbar-width: none; }
-  .scroll::-webkit-scrollbar { display: none; }
+  .scroll { padding-top: calc(20px + var(--sat)); }
   .sticky { margin-top: calc(-20px - var(--sat)); padding-top: calc(20px + var(--sat)); }
   .inp, .when .inp, .air-input .inp { font-size: 16px; }
   .cal-pop { top: calc(76px + var(--sat)); }
@@ -755,7 +754,15 @@ button, a, [role="switch"] { -webkit-tap-highlight-color: transparent; touch-act
 .sheet { padding-bottom: calc(22px + var(--sab)); }
 .v-actions { padding-bottom: calc(16px + var(--sab)); }
 
-@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+/* 스크롤바: 휴대폰처럼 얇고 투명하게 */
+.scroll::-webkit-scrollbar, .sheet::-webkit-scrollbar { width: 4px; height: 4px; }
+.scroll::-webkit-scrollbar-track, .sheet::-webkit-scrollbar-track { background: transparent; }
+.scroll::-webkit-scrollbar-thumb, .sheet::-webkit-scrollbar-thumb { background: rgba(0,0,0,.22); border-radius: 2px; }
+.scroll::-webkit-scrollbar-thumb:active, .sheet::-webkit-scrollbar-thumb:active { background: rgba(0,0,0,.38); }
+@supports (-moz-appearance: none) { .scroll, .sheet { scrollbar-width: thin; scrollbar-color: rgba(0,0,0,.22) transparent; } }
+
+@media (prefers-reduced-motion: reduce)
+ { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 
 <div class="switcher" id="switcher" role="group" aria-label="화면 상태 전환"></div>

@@ -315,6 +315,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .sheet::before { content: ""; width: 40px; height: 4px; border-radius: 2px; background: var(--ph-2); margin: 0 auto 4px; }
 .sheet h3 { margin: 0; font-size: 18px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
 .sheet p { margin: -6px 0 0; font-size: 13px; color: var(--sub); line-height: 1.5; }
+.sheet .up-ask-sub { font-size: 12px; }
+
+/* 앱 열 때 올리는 사진 (공유 앨범 상단) */
+.up-live { display: flex; flex-direction: column; gap: 8px; }
+.up-live-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.up-live-top b { font-weight: 600; }
+.up-live-top span { font-size: 13px; font-weight: 700; }
+.up-live-track { height: 4px; border-radius: 2px; background: var(--ph); overflow: hidden; }
+.up-live-track i { display: block; height: 100%; background: var(--fg); transition: width .18s linear; }
+.up-tile { display: grid; place-items: center; }
+.up-tile.wait { opacity: .5; }
+.up-tile em { font-style: normal; font-size: 12px; font-weight: 700; color: var(--sub); font-variant-numeric: tabular-nums; }
+.up-tile .bar { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.7); overflow: hidden; }
+.up-tile .bar i { display: block; height: 100%; background: var(--fg); }
+.up-tile .ok { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; background: var(--fg); display: grid; place-items: center; }
+.up-tile .ok svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 3; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .sheet-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; margin-top: 4px; }
 .sheet-actions .btn { height: 50px; font-size: 15px; border-radius: 12px; }
 .btn-soft { background: var(--accent-soft); color: var(--fg); }
@@ -1323,8 +1339,8 @@ function albumBody(grouped) {
 }
 
 const albumViews = {
-  default: () => `${albumHeader()}${albumBody(true)}`,
-  nogroup: () => `${albumHeader()}${albumBody(false)}`,
+  default: () => `${albumHeader()}${uploadBlock()}${albumBody(true)}`,
+  nogroup: () => `${albumHeader()}${uploadBlock()}${albumBody(false)}`,
   loading: () => `
     ${albumHeader({ count: "불러오는 중…", showDl: false, tabsDisabled: true })}
     <section class="day" aria-busy="true" aria-label="사진 불러오는 중">
@@ -1341,6 +1357,71 @@ const albumViews = {
     </div>`,
   error: () => `${albumHeader({ showDl: false, tabs: false, info: false })}${errorBlock}`,
 };
+
+/* 앱을 열면: 수집 중인 폴더에 오늘 새로 찍은 사진 올리기 */
+const NEW_SHOTS = 18;            // 더미: 마지막 업로드 후 새로 찍은 사진 수
+let autoUp = null;               // { idx, items: [{ p, state }], done, timer }
+
+function showLaunchUpload() {
+  if (screenName !== "home" || states.home !== "default" || viewer) return;
+  const idx = folders.findIndex(f => f.live);
+  if (idx < 0) return;
+  openSheet(`
+    <h3>'${folders[idx].name}'에 오늘 찍은 사진을 업로드할까요?</h3>
+    <p class="up-ask-sub">마지막 업로드 후 ${NEW_SHOTS}장을 더 찍었어요.</p>
+    <div class="sheet-actions">
+      <button class="btn btn-soft" type="button" data-sheetclose>닫기</button>
+      <button class="btn btn-primary" type="button" data-autoup="${idx}">업로드</button>
+    </div>`);
+}
+
+function startAutoUpload(idx) {
+  clearInterval(autoUp && autoUp.timer);
+  autoUp = { idx, items: Array.from({ length: NEW_SHOTS }, (_, i) => ({ p: 0, state: i < 3 ? "up" : "wait" })), done: false, timer: null };
+  autoUp.timer = setInterval(() => {
+    const it = autoUp.items;
+    const running = it.filter(x => x.state === "up").length;
+    it.filter(x => x.state === "wait").slice(0, Math.max(0, 3 - running)).forEach(x => x.state = "up");
+    it.forEach((x, i) => {
+      if (x.state !== "up") return;
+      x.p = Math.min(100, x.p + 9 + (i * 7) % 14);
+      if (x.p >= 100) x.state = "done";
+    });
+    if (it.every(x => x.state === "done")) {
+      clearInterval(autoUp.timer);
+      autoUp.done = true;
+      folders[autoUp.idx].photos += NEW_SHOTS;
+      if (screenName === "album" && albumIdx === autoUp.idx) render(true);
+      toast(`${NEW_SHOTS}장을 '${folders[autoUp.idx].name}'에 올렸어요`);
+      return;
+    }
+    const el = document.getElementById("upBlock");
+    if (el) el.outerHTML = uploadBlock();
+  }, 180);
+}
+
+const upPct = () => Math.round(autoUp.items.reduce((a, x) => a + (x.state === "done" ? 100 : x.state === "up" ? x.p : 0), 0) / autoUp.items.length);
+
+function uploadBlock() {
+  if (!autoUp || autoUp.idx !== albumIdx || albumTab === "best") return "";
+  const it = autoUp.items, n = it.filter(x => x.state === "done").length;
+  if (autoUp.done) return `
+    <section class="day" id="upBlock">
+      <div class="day-head">방금 올린 내 사진<span>· ${it.length}장</span></div>
+      <div class="pgrid">${it.map((_, i) => `<button class="ph" type="button" data-photo="m0-${100 + i}" aria-label="방금 올린 사진"></button>`).join("")}</div>
+    </section>`;
+  const pct = upPct();
+  return `
+    <section class="up-live" id="upBlock" aria-live="polite">
+      <div class="up-live-top"><b>내 사진 올리는 중 · ${n}/${it.length}장</b><span>${pct}%</span></div>
+      <div class="up-live-track"><i style="width:${pct}%"></i></div>
+      <div class="pgrid up-live-grid">
+        ${it.map(x => `<div class="ph up-tile ${x.state}">
+          ${x.state === "wait" ? "<em>대기</em>" : x.state === "up" ? `<em>${Math.round(x.p)}%</em><span class="bar"><i style="width:${x.p}%"></i></span>` : `<span class="ok"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span>`}
+        </div>`).join("")}
+      </div>
+    </section>`;
+}
 
 let albumFrom = "home";
 function openAlbum(i) {
@@ -3470,6 +3551,16 @@ document.addEventListener("click", e => {
     return;
   }
   if (e.target.closest("[data-dlgo]")) { closeSheet(); startDl(); return; }
+  const au = e.target.closest("[data-autoup]");
+  if (au) {
+    const idx = Number(au.dataset.autoup);
+    closeSheet();
+    states.album = "default";
+    openAlbum(idx);
+    startAutoUpload(idx);
+    render(true);
+    return;
+  }
   if (e.target.closest("[data-sheetclose]")) { closeSheet(); return; }
   const sb = e.target.closest("[data-setbest]");
   if (sb) {
@@ -3638,4 +3729,5 @@ if (window.visualViewport) {
 }
 
 render();
+setTimeout(showLaunchUpload, 450);
 </script>

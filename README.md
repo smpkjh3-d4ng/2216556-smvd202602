@@ -2,7 +2,11 @@
 
 휴대폰에서 앱처럼 조작할 수 있는 HTML 워킹 프로토타입이에요. 화면은 `phou/index.html` 한 파일에 들어 있어요.
 
-## 휴대폰에서 열기
+## 바로 열기
+
+https://smpkjh3-d4ng.github.io/2216556-smvd202602/ (GitHub Pages, 어디서나 열림)
+
+## 휴대폰에서 열기 (로컬 서버)
 
 Mac에서 서버를 켜요 (macOS 기본 Ruby 사용).
 

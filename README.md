@@ -13,9 +13,9 @@
 
 ## 바로 열기 (GitHub Pages, 어디서나 열림)
 
-- 첫 화면: https://smpkjh3-d4ng.github.io/2216556-smvd202602/
-- 앱: https://smpkjh3-d4ng.github.io/2216556-smvd202602/phou/
-- 초대 링크 웹: https://smpkjh3-d4ng.github.io/2216556-smvd202602/web/
+- 첫 화면: https://smpkjh3-d4ng.github.io/wk5-photoshare/
+- 앱: https://smpkjh3-d4ng.github.io/wk5-photoshare/phou/
+- 초대 링크 웹: https://smpkjh3-d4ng.github.io/wk5-photoshare/web/
 
 ## 휴대폰에서 열기 (로컬 서버)
 

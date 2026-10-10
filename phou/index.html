@@ -1433,11 +1433,29 @@ function optionsSheet(where) {
 }
 
 /* 바텀 시트 */
+let sheetTimer = null;
 function openSheet(html) {
-  document.getElementById("sheetBody").innerHTML = html;
-  document.getElementById("sheet").hidden = false;
+  clearTimeout(sheetTimer);
+  const layer = document.getElementById("sheet"), body = document.getElementById("sheetBody");
+  body.innerHTML = html;
+  body.style.transform = "";
+  body.scrollTop = 0;
+  layer.classList.remove("closing");
+  layer.hidden = false;
+  body.style.touchAction = body.scrollHeight > body.clientHeight + 1 ? "pan-y" : "none";
+  if (typeof ensureGuard === "function") ensureGuard();
 }
-function closeSheet() { document.getElementById("sheet").hidden = true; }
+function closeSheet() {
+  const layer = document.getElementById("sheet");
+  if (layer.hidden || layer.classList.contains("closing")) return;
+  layer.classList.add("closing");
+  clearTimeout(sheetTimer);
+  sheetTimer = setTimeout(() => {
+    layer.hidden = true;
+    layer.classList.remove("closing");
+    document.getElementById("sheetBody").style.transform = "";
+  }, 200);
+}
 
 function startDl() {
   const total = folders[albumIdx].photos;
@@ -2578,7 +2596,7 @@ document.addEventListener("pointermove", e => {
   rvDrag.card.querySelector(".stamp.keep").style.opacity = Math.max(0, Math.min(1, dx / 90));
   rvDrag.card.querySelector(".stamp.skip").style.opacity = Math.max(0, Math.min(1, -dx / 90));
 });
-document.addEventListener("pointerup", e => {
+["pointerup", "pointercancel"].forEach(ev => document.addEventListener(ev, e => {
   if (!rvDrag) return;
   const dx = e.clientX - rvDrag.x, card = rvDrag.card;
   rvDrag = null;
@@ -2586,7 +2604,7 @@ document.addEventListener("pointerup", e => {
   if (Math.abs(dx) > 90) { rvDecide(dx > 0); return; }
   card.style.transform = "";
   card.querySelectorAll(".stamp").forEach(st => st.style.opacity = 0);
-});
+}));
 
 function reviewClick(e) {
   if (e.target.closest("[data-rvstart]")) { startReview(); return true; }
@@ -2960,6 +2978,7 @@ function openViewer(id) {
   viewer = { list: [...new Set(list)], i, bare: false, info: false };
   clearTimeout(toastTimer); document.getElementById("toast").classList.remove("show");
   document.getElementById("phone").classList.add("viewing");
+  setThemeColor("#0B0B0B"); if (typeof ensureGuard === "function") ensureGuard();
   viewer.i = viewer.list.indexOf(id);
   renderViewer();
 }
@@ -2967,6 +2986,7 @@ function openViewer(id) {
 function closeViewer() {
   viewer = null;
   document.getElementById("phone").classList.remove("viewing");
+  setThemeColor("#FFFFFF");
   document.getElementById("viewer").hidden = true;
 }
 
@@ -3039,11 +3059,43 @@ document.addEventListener("pointerdown", e => {
   if (!viewer || !e.target.closest("#vStage") || e.target.closest(".v-nav")) return;
   vDown = { x: e.clientX, y: e.clientY };
 });
+// 손가락을 따라 사진이 움직이고, 넘기면 다음 사진이 옆에서 들어온다
+document.addEventListener("pointermove", e => {
+  if (!viewer || !vDown) return;
+  const dx = e.clientX - vDown.x, dy = e.clientY - vDown.y;
+  if (!vDown.drag && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) vDown.drag = true;
+  if (!vDown.drag) return;
+  const ph = document.querySelector("#vStage .v-photo");
+  if (!ph) return;
+  const edge = (dx > 0 && viewer.i === 0) || (dx < 0 && viewer.i === viewer.list.length - 1);
+  ph.classList.add("dragging");
+  ph.style.transform = `translateX(${edge ? dx * .3 : dx}px)`;
+}, { passive: true });
+document.addEventListener("pointercancel", () => {
+  if (!vDown) return;
+  vDown = null;
+  const ph = document.querySelector("#vStage .v-photo");
+  if (ph) { ph.classList.remove("dragging"); ph.style.transform = ""; }
+});
 document.addEventListener("pointerup", e => {
   if (!viewer || !vDown) return;
   const dx = e.clientX - vDown.x, dy = e.clientY - vDown.y;
   vDown = null;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { stepViewer(dx < 0 ? 1 : -1); return; }
+  const ph = document.querySelector("#vStage .v-photo");
+  if (ph) ph.classList.remove("dragging");
+  const dir = dx < 0 ? 1 : -1;
+  const can = viewer.i + dir >= 0 && viewer.i + dir < viewer.list.length;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && can) {
+    stepViewer(dir);
+    const np = document.querySelector("#vStage .v-photo");
+    if (np) {
+      np.classList.add("dragging");
+      np.style.transform = `translateX(${dir * 60}%)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => { np.classList.remove("dragging"); np.style.transform = ""; }));
+    }
+    return;
+  }
+  if (ph) ph.style.transform = "";
   if (Math.abs(dx) < 8 && Math.abs(dy) < 8) { viewer.bare = !viewer.bare; document.getElementById("viewer").classList.toggle("bare", viewer.bare); }
 });
 document.addEventListener("keydown", e => {
@@ -3095,7 +3147,8 @@ function renderSwitcher() {
   const cur = states[screenName];
   switcher.innerHTML = `<span>${screenTitles[screenName]} 상태</span>` +
     stateLabels[screenName].map(([k, l]) =>
-      `<button type="button" data-state="${k}" aria-pressed="${k === cur}">${l}</button>`).join("");
+      `<button type="button" data-state="${k}" aria-pressed="${k === cur}">${l}</button>`).join("") +
+    `<button type="button" class="dev-close" data-devclose>닫기</button>`;
 }
 
 
@@ -3111,6 +3164,7 @@ function render(keepScroll) {
   renderSwitcher();
   renderCal();
   renderAlbumChrome();
+  ensureGuard();
 }
 
 // 아래로 스크롤하면 상단 영역을 숨기고, 위로 스크롤하면 다시 보여준다
@@ -3483,6 +3537,105 @@ document.addEventListener("click", e => {
   const m = e.target.closest("[data-msg]");
   if (m && !m.disabled) toast(m.dataset.msg);
 });
+
+/* ---------- 휴대폰 동작 ---------- */
+const isPhone = () => matchMedia("(max-width: 600px)").matches;
+function setThemeColor(c) { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = c; }
+
+// 확대 막기 (iOS 핀치·더블탭)
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+// 상태 전환 패널: 휴대폰에서는 두 손가락으로 탭해서 열고 닫는다. 주소에 ?dev 를 붙이면 열린 채로 시작
+if (/[?&]dev\b/.test(location.search)) document.body.classList.add("dev-open");
+document.addEventListener("touchstart", e => {
+  if (e.touches.length === 2) { e.preventDefault(); document.body.classList.toggle("dev-open"); }
+}, { passive: false });
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-devclose]")) { e.stopPropagation(); document.body.classList.remove("dev-open"); return; }
+  // 지금 탭을 한 번 더 누르면 맨 위로
+  const tab = e.target.closest(".tab[data-screen]");
+  if (tab && tab.dataset.screen === screenName && !(screenName === "menu" && menuSub)) screen.scrollTo({ top: 0, behavior: "smooth" });
+}, true);
+
+// 길게 누르는 중에 손가락이 움직이면(스크롤) 길게 누르기를 취소
+let pressStart = null;
+document.addEventListener("pointerdown", e => { pressStart = { x: e.clientX, y: e.clientY }; }, true);
+document.addEventListener("pointermove", e => {
+  if (!pressStart || !pressTimer) return;
+  if (Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 10) { clearTimeout(pressTimer); pressTimer = null; }
+}, { passive: true });
+
+// 바텀 시트를 아래로 밀어서 닫기
+const sheetEl = document.getElementById("sheetBody");
+let sDrag = null;
+sheetEl.addEventListener("pointerdown", e => {
+  if (e.target.closest("input, textarea") || sheetEl.scrollTop > 0) return;
+  sDrag = { x: e.clientX, y: e.clientY, dy: 0, on: false, t: Date.now() };
+});
+document.addEventListener("pointermove", e => {
+  if (!sDrag) return;
+  const dx = e.clientX - sDrag.x, dy = e.clientY - sDrag.y;
+  if (!sDrag.on) {
+    if (dy > 8 && dy > Math.abs(dx)) { sDrag.on = true; sDrag.t = Date.now(); sheetEl.classList.add("dragging"); }
+    else if (Math.abs(dx) > 8 || dy < -8) { sDrag = null; return; }
+    else return;
+  }
+  sDrag.dy = Math.max(0, dy - 8);
+  sheetEl.style.transform = `translateY(${sDrag.dy}px)`;
+}, { passive: true });
+["pointerup", "pointercancel"].forEach(ev => document.addEventListener(ev, () => {
+  if (!sDrag) return;
+  const d = sDrag; sDrag = null;
+  if (!d.on) return;
+  sheetEl.classList.remove("dragging");
+  suppressClickUntil = Date.now() + 300;
+  if (d.dy > 90 || d.dy / Math.max(1, Date.now() - d.t) > .6) closeSheet();
+  else sheetEl.style.transform = "";
+}));
+
+// 휴대폰 뒤로 가기(안드로이드 뒤로 버튼, iOS 가장자리 스와이프)를 앱 안의 뒤로 가기로 바꾼다
+let guarded = false;
+const atRoot = () => screenName === "home" && !viewer && document.getElementById("sheet").hidden && !calOpen && !selecting && !document.body.classList.contains("dev-open");
+function ensureGuard() {
+  if (guarded || atRoot()) return;
+  history.pushState({ phou: 1 }, "");
+  guarded = true;
+}
+function goBack() {
+  const sheet = document.getElementById("sheet");
+  if (!sheet.hidden && !sheet.classList.contains("closing")) { closeSheet(); return; }
+  if (document.body.classList.contains("dev-open")) { document.body.classList.remove("dev-open"); return; }
+  if (viewer) { closeViewer(); return; }
+  if (calOpen) { calOpen = false; render(true); return; }
+  if (selecting) { exitSelect(); render(true); return; }
+  const backs = ["[data-qrclose]", "[data-fcancel]", "[data-back]", "[data-mback]", "[data-fback]", "[data-nback]", "[data-pback]",
+                 "[data-peback]", "[data-shback]", "[data-clback]", "[data-rvclose]", "[data-cprev]", "[data-cclose]"];
+  for (const s of backs) { const b = screen.querySelector(s); if (b) { b.click(); return; } }
+  if (screenName !== "home") { screenName = "home"; closeCal(); exitSelect(); render(); }
+}
+window.addEventListener("popstate", () => {
+  guarded = false;
+  goBack();
+  ensureGuard();
+});
+
+// 키보드가 올라오면 화면 높이를 맞추고 입력칸이 가려지지 않게
+if (window.visualViewport) {
+  const vv = window.visualViewport, phoneEl = document.getElementById("phone");
+  let lastH = vv.height;
+  const fit = () => {
+    if (!isPhone()) { phoneEl.style.height = ""; phoneEl.style.top = ""; return; }
+    phoneEl.style.height = `${vv.height}px`;
+    phoneEl.style.top = `${vv.offsetTop}px`;
+    const a = document.activeElement;
+    if (vv.height < lastH - 80 && a && a.matches("input, textarea")) setTimeout(() => a.scrollIntoView({ block: "center", behavior: "smooth" }), 60);
+    lastH = vv.height;
+  };
+  vv.addEventListener("resize", fit);
+  vv.addEventListener("scroll", fit);
+  window.addEventListener("orientationchange", () => setTimeout(fit, 300));
+  fit();
+}
 
 render();
 </script>

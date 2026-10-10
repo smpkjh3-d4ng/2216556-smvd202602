@@ -3574,6 +3574,8 @@ document.addEventListener("click", e => {
   if (e.target.closest("[data-aisave]")) { toast(`추천 사진 ${groupCount}장을 원본으로 저장했어요`); return; }
   const ag = e.target.closest("[data-agroup]");
   if (ag && openGroup !== ag.dataset.agroup) { openGroup = ag.dataset.agroup; render(true); toast(BEST_HINT, 3500); return; }
+  // 펼친 묶음의 BEST 사진을 한 번 더 누르면 접기
+  if (ag && openGroup === ag.dataset.agroup) { openGroup = null; render(true); return; }
   if (e.target.closest("[data-retry]")) {
     const which = screenName;
     states[which] = "loading"; render();
@@ -3611,7 +3613,7 @@ document.addEventListener("click", e => {
     render(true);
     return;
   }
-  // 묶음 BEST 사진: 첫 클릭은 묶음 펼치기(한 번에 한 묶음만), 펼친 뒤 다시 클릭하면 사진 상세
+  // 묶음 BEST 사진: 첫 클릭은 묶음 펼치기(한 번에 한 묶음만), 펼친 뒤 다시 클릭하면 접기
   const grp = e.target.closest("[data-group]");
   if (grp && !expanded.has(grp.dataset.group)) {
     expanded.clear();
@@ -3620,6 +3622,8 @@ document.addEventListener("click", e => {
     toast(BEST_HINT, 3500);
     return;
   }
+  // 펼친 묶음의 BEST 사진을 한 번 더 누르면 접기
+  if (grp && expanded.has(grp.dataset.group)) { expanded.delete(grp.dataset.group); render(true); return; }
   const p = e.target.closest("[data-photo]");
   if (p) {
     openViewer(p.dataset.photo);

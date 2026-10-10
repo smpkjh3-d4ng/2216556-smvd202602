@@ -1,10 +1,12 @@
 # 사진 공유 앱 프로토타입
 
-휴대폰에서 앱처럼 조작할 수 있는 HTML 워킹 프로토타입이에요. 화면은 `phou/index.html` 한 파일에 들어 있어요.
+휴대폰에서 앱처럼 조작할 수 있는 HTML 워킹 프로토타입이에요. 앱은 `phou/index.html`, 받는 사람용 웹은 `web/index.html` 에 들어 있어요.
 
-## 바로 열기
+## 바로 열기 (GitHub Pages, 어디서나 열림)
 
-https://smpkjh3-d4ng.github.io/2216556-smvd202602/ (GitHub Pages, 어디서나 열림)
+- 첫 화면: https://smpkjh3-d4ng.github.io/2216556-smvd202602/
+- 앱: https://smpkjh3-d4ng.github.io/2216556-smvd202602/phou/
+- 초대 링크 웹: https://smpkjh3-d4ng.github.io/2216556-smvd202602/web/
 
 ## 휴대폰에서 열기 (로컬 서버)
 

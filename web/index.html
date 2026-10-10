@@ -1,3 +1,10 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#FFFFFF">
+<meta name="format-detection" content="telephone=no">
 <title>사진 공유 웹 화면</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -122,7 +129,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outlin
 .face span { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; position: relative; overflow: hidden; }
 .face span::before { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.55); top: 11px; }
 .face span::after { content: ""; position: absolute; width: 40px; height: 22px; border-radius: 20px 20px 0 0; background: rgba(255,255,255,.55); bottom: -4px; }
-.face:hover span { outline: 2px solid var(--fg); outline-offset: 2px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .sec-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
 .sec-head h2 small { font-size: 13px; font-weight: 500; color: var(--sub); margin-left: 4px; }
@@ -221,12 +227,56 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--fg); outlin
 .phone.viewing .toast { bottom: auto; top: 70px; background: #fff; color: #111; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes up { from { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+/* ---------- 모바일: 실제 휴대폰 브라우저에서 ---------- */
+:root { --sat: 0px; --sab: 0px; }
+html { -webkit-text-size-adjust: 100%; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.phone { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.phone input { -webkit-user-select: text; user-select: text; }
+.scroll, .sheet { overscroll-behavior: contain; }
+@media (hover: hover) { .face:hover span { outline: 2px solid var(--fg); outline-offset: 2px; } }
+@media (hover: none) {
+  button:active:not(:disabled):not(.ph) { opacity: .6; }
+  .ph:active { filter: brightness(.92); }
+}
+.toast { max-width: calc(100% - 32px); white-space: normal; text-align: center; width: max-content; bottom: calc(128px + var(--sab)); }
+.phone.viewing .toast { bottom: auto; top: calc(70px + var(--sat)); }
+.scroll { padding-bottom: calc(110px + var(--sab)); }
+.cta { padding-bottom: calc(16px + var(--sab)); }
+.dock { padding-bottom: calc(16px + var(--sab)); }
+.sheet { padding-bottom: calc(22px + var(--sab)); }
+.v-actions { padding-bottom: calc(16px + var(--sab)); }
+.dev { display: contents; }
+.dev-close { display: none; }
+
+@media (max-width: 600px) {
+  :root { --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { padding: 0; background: var(--bg); touch-action: pan-x pan-y; }
+  .phone { position: fixed; left: 0; right: 0; top: 0; height: 100%; max-width: none; min-height: 0; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  .phone::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: var(--sat); background: var(--bg); z-index: 7; pointer-events: none; }
+  .phone.viewing::before { background: #0B0B0B; z-index: 9; }
+  .urlbar { display: none; }
+  .scroll { padding-top: var(--sat); scrollbar-width: none; }
+  .scroll::-webkit-scrollbar { display: none; }
+  .al-bar { margin-top: calc(-1 * var(--sat)); padding-top: calc(10px + var(--sat)); }
+  .v-top { padding-top: calc(12px + var(--sat)); }
+  .dev { position: fixed; z-index: 100; left: 12px; right: 12px; top: calc(8px + var(--sat)); display: none; flex-direction: column; gap: 8px; padding: 12px; border-radius: 16px; background: var(--bg); box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+  body.dev-open .dev { display: flex; }
+  .dev .switcher { margin: 0; max-width: none; }
+  .dev-close { display: block; align-self: flex-end; font-size: 12px; padding: 6px 12px; border-radius: 999px; background: var(--fg); color: #fff; }
+}
+
+@media (prefers-reduced-motion: reduce)
+ { *, *::after { animation: none !important; transition: none !important; } }
 </style>
 
+<div class="dev" id="dev">
 <div class="switcher" id="swScreen" role="group" aria-label="화면 전환"></div>
 <div class="switcher" id="swState" role="group" aria-label="상태 전환"></div>
 <div class="switcher" id="swDevice" role="group" aria-label="기기 전환"></div>
+<button type="button" class="dev-close" data-devclose>닫기</button>
+</div>
 
 <div class="phone" id="phone">
   <div class="urlbar" aria-hidden="true">
@@ -534,7 +584,8 @@ function openViewer(id) {
 }
 function renderViewer() {
   const el = document.getElementById("viewer");
-  if (!viewer) { el.hidden = true; document.getElementById("phone").classList.remove("viewing"); return; }
+  if (!viewer) { el.hidden = true; document.getElementById("phone").classList.remove("viewing"); setThemeColor("#FFFFFF"); return; }
+  setThemeColor("#0B0B0B"); ensureGuard();
   const id = viewer.list[viewer.i];
   const mine = S.mine.includes(id) || id.startsWith("m");
   const g = groupOf(id);
@@ -559,6 +610,7 @@ function renderViewer() {
     </div>`;
 }
 let vx = null;
+document.addEventListener("pointercancel", () => { vx = null; });
 document.addEventListener("pointerdown", e => { if (viewer && e.target.closest("#vStage") && !e.target.closest(".v-nav")) vx = e.clientX; });
 document.addEventListener("pointerup", e => {
   if (!viewer || vx === null) return;
@@ -595,6 +647,7 @@ function render(keep) {
   bottomEl.innerHTML = v[1]();
   screenEl.scrollTop = keep ? top : 0;
   renderSwitchers();
+  ensureGuard();
 }
 function renderSwitchers() {
   const btns = (id, label, items, cur, attr) => {
@@ -610,7 +663,7 @@ function renderSwitchers() {
 }
 
 /* ---------- 시트 · 토스트 ---------- */
-function openSheet(html) { clearTimeout(tt); document.getElementById("toast").classList.remove("show"); document.getElementById("sheet").innerHTML = html; document.getElementById("layer").hidden = false; }
+function openSheet(html) { clearTimeout(tt); document.getElementById("toast").classList.remove("show"); document.getElementById("sheet").innerHTML = html; document.getElementById("layer").hidden = false; ensureGuard(); }
 function closeSheet() { document.getElementById("layer").hidden = true; }
 let tt;
 function toast(m, ms = 1900) {
@@ -797,6 +850,56 @@ document.addEventListener("click", e => {
 screenEl.addEventListener("scroll", () => {
   document.getElementById("alBar")?.classList.toggle("scrolled", screenEl.scrollTop > 4);
 }, { passive: true });
+
+/* ---------- 휴대폰 동작 ---------- */
+function setThemeColor(c) { const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = c; }
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+// 화면·상태·기기 전환 패널: 휴대폰에서는 두 손가락으로 탭해서 열고 닫는다. 주소에 ?dev 를 붙이면 열린 채로 시작
+if (/[?&]dev\b/.test(location.search)) document.body.classList.add("dev-open");
+document.addEventListener("touchstart", e => {
+  if (e.touches.length === 2) { e.preventDefault(); document.body.classList.toggle("dev-open"); }
+}, { passive: false });
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-devclose]")) { e.stopPropagation(); document.body.classList.remove("dev-open"); }
+}, true);
+
+// 휴대폰 뒤로 가기: 사진 보기 → 시트 → 내 사진 추가 순서로 닫는다
+let guarded = false;
+const atRoot = () => !viewer && document.getElementById("layer").hidden && S.screen !== "upload" && !document.body.classList.contains("dev-open");
+function ensureGuard() {
+  if (guarded || atRoot()) return;
+  history.pushState({ phouWeb: 1 }, "");
+  guarded = true;
+}
+window.addEventListener("popstate", () => {
+  guarded = false;
+  if (!document.getElementById("layer").hidden) { document.querySelector("#sheet [data-close], #sheet [data-upresume]")?.click() || closeSheet(); }
+  else if (document.body.classList.contains("dev-open")) document.body.classList.remove("dev-open");
+  else if (viewer) { viewer = null; renderViewer(); }
+  else if (S.screen === "upload") {
+    if (uploading(S.picked)) document.querySelector("[data-upcancel]")?.click();
+    else document.querySelector('[data-go="album"]')?.click();
+  }
+  ensureGuard();
+});
+
+// 키보드가 올라오면 화면 높이를 맞추고 입력칸이 가려지지 않게
+if (window.visualViewport) {
+  const vv = window.visualViewport, phoneEl = document.getElementById("phone");
+  let lastH = vv.height;
+  const fit = () => {
+    if (!matchMedia("(max-width: 600px)").matches) { phoneEl.style.height = ""; phoneEl.style.top = ""; return; }
+    phoneEl.style.height = `${vv.height}px`;
+    phoneEl.style.top = `${vv.offsetTop}px`;
+    const a = document.activeElement;
+    if (vv.height < lastH - 80 && a && a.matches("input")) setTimeout(() => a.scrollIntoView({ block: "center", behavior: "smooth" }), 60);
+    lastH = vv.height;
+  };
+  vv.addEventListener("resize", fit);
+  vv.addEventListener("scroll", fit);
+  fit();
+}
 
 render();
 </script>

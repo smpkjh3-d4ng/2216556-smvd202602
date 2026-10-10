@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "phou", "runtimeExecutable": "ruby", "runtimeArgs": ["-run", "-e", "httpd", "phou", "-b", "0.0.0.0", "-p", "8123"], "port": 8123 }
+  ]
+}

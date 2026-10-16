@@ -277,6 +277,10 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 @media (prefers-reduced-motion: reduce)
 
  { *, *::after { animation: none !important; transition: none !important; } }
+
+.invite-brand{font-size:24px;font-weight:700;letter-spacing:-1px}.invite-date{margin:12px 0 0;font-size:14px;color:var(--sub)}.inv-head .from{margin-top:14px;color:var(--fg);font-size:14px}.invite-summary{background:var(--soft);border:1px solid var(--line);border-radius:16px;padding:4px 16px}.invite-summary>div{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--sub)}.invite-summary>div:last-child{border-bottom:0}.invite-summary strong{text-align:right;color:var(--fg);font-size:14px;line-height:1.6}.invite-member-count{display:flex;gap:12px;align-items:center}.invite-notes p{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:var(--sub);font-size:13px;line-height:1.5}.invite-notes svg{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.cta.invite-actions{flex-direction:row;gap:10px}.invite-actions .btn:first-child{flex:1}.invite-actions .btn:last-child{flex:2}
+.web-add-fab{position:absolute;right:20px;bottom:calc(20px + var(--sab, 0px));z-index:6;width:60px;height:60px;border-radius:50%;background:var(--fg);color:#fff;display:grid;place-items:center;box-shadow:0 4px 14px #0002}.web-add-fab svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.selected-preview{width:100%;height:100%;object-fit:cover;display:block}.remove-picked{position:absolute;top:6px;right:6px;width:28px;height:28px;border-radius:50%;background:#111;color:#fff;display:grid;place-items:center;font-size:22px;z-index:2}
 </style>
 
 <div class="dev" id="dev">
@@ -298,9 +302,10 @@ button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
 
+<input id="photoPicker" type="file" accept="image/*,.heic,.heif" multiple hidden aria-label="추가할 사진 선택">
 <script>
 /* ---------- 더미 데이터 ---------- */
-const album = { name: "속초 여행", host: "성은", date: "10.3 – 10.4", photos: 214, members: ["성", "지", "민", "서"], more: 2 };
+const album = { name: "다같이 홍대 투어", host: "A", date: "2026.10.07 – 2026.10.09", startDate: "2026.10.07", endDate: "2026.10.09", expiresDate: "2026.10.22", photos: 36, members: ["A", "B", "C", "D"], more: 1 };
 // 시간대 묶음: groups = { 시작 위치: 비슷한 사진 장수 }, reasons = AI 추천 이유
 const days = [
   { head: "10월 4일 오후", count: 11, groups: { 0: 6, 7: 3 }, reasons: { 0: "모두 눈을 뜨고 있어요", 7: "가장 선명해요" } },
@@ -317,7 +322,7 @@ const S = {
   album: "default",          // default | empty
   upload: "default",         // default | fail
   device: "ios",             // ios | android
-  joined: false, nick: "", waiting: false,
+  joined: false, nick: "", waiting: false, inviteStep: "detail",
   myFace: null, faceAll: false,
   tab: "all", openGroup: null, nudge: true,
   mine: [],                  // 내가 올린 사진 id
@@ -347,7 +352,7 @@ const I = {
 function inviteView() {
   const st = S.invite;
   const head = `
-    <div class="inv-top"><span class="brand" aria-label="서비스 이름 자리">서비스명</span></div>`;
+    <div class="inv-top"><strong class="invite-brand">phoU</strong></div>`;
   if (st === "expired") return `${head}
     <div class="state-box">
       <span class="ic">${I.link}</span>
@@ -360,34 +365,31 @@ function inviteView() {
       <h2>${album.host}님의 승인을 기다리고 있어요</h2>
       <p>승인되면 이 화면에서 바로 사진을 볼 수 있어요.<br>이 페이지를 닫아도 같은 링크로 다시 들어오면 돼요.</p>
     </div>`;
+  if (S.inviteStep === "declined") return `${head}<div class="state-box"><h2>앨범에 참여하지 않았어요</h2><p>원할 때 이 링크로 다시 참여할 수 있어요.</p></div>`;
+  if (S.inviteStep === "name") return `${head}<section class="inv-head"><h1>앨범에서 사용할<br>이름을 알려 주세요</h1><p class="note">'${album.name}' 참여자에게 표시돼요.</p></section><div class="field"><label for="nick">앨범에서 보일 이름 <em>${S.nick.length}/10</em></label><input class="inp" id="nick" data-nick maxlength="10" placeholder="예) 지민" value="${S.nick}" autocomplete="nickname"><p class="note">전화번호나 계정은 받지 않아요.</p></div>`;
   return `${head}
-    <div class="inv-cover" role="img" aria-label="${album.name} 대표 사진">${I.photo}<span class="count">사진 ${album.photos}장</span></div>
     <section class="inv-head">
-      <span class="from"><i>${album.host[0]}</i>${album.host}님이 초대했어요</span>
-      <h1>'${album.name}' 공유 앨범에<br>함께해요</h1>
-      <div class="meta"><span>${album.date}</span><span>·</span><b>사진 ${album.photos}장</b><span>·</span>
-        <span class="faces">${album.members.map(m => `<span>${m}</span>`).join("")}<span class="more">+${album.more}</span></span>
-      </div>
+      <p class="invite-date">${album.startDate}</p>
+      <h1>'${album.name}'에<br>참여할까요?</h1>
+      <span class="from"><i>${album.host[0]}</i><span><b>${album.host}</b>님이 초대했어요</span></span>
     </section>
-    <section class="points">
-      <div>${I.check}<span>앱 설치나 회원가입 없이 바로 볼 수 있어요</span></div>
-      <div>${I.check}<span>AI가 비슷한 사진 중 BEST컷을 골라 놨어요</span></div>
-      <div>${I.check}<span>원본 화질 그대로 내 휴대폰에 저장돼요</span></div>
+    <section class="invite-summary" aria-label="앨범 정보">
+      <div><span>기간</span><strong>${album.startDate}<br>~${album.endDate}</strong></div>
+      <div><span>멤버</span><strong class="invite-member-count"><span class="faces">${album.members.map(m => `<span>${m}</span>`).join("")}</span>${album.members.length + album.more}명</strong></div>
+      <div><span>사진</span><strong>${album.photos}장</strong></div>
     </section>
-    <div class="field">
-      <label for="nick">앨범에서 보일 이름 <em>${S.nick.length}/10</em></label>
-      <input class="inp" id="nick" data-nick maxlength="10" placeholder="예) 지민" value="${S.nick}" autocomplete="nickname">
-      <p class="note">내가 올린 사진에 이 이름이 표시돼요. 전화번호나 계정은 받지 않아요.</p>
-    </div>
-    ${st === "approve" ? '<p class="note" style="text-align:center">이 앨범은 방장이 승인해야 사진을 볼 수 있어요.</p>' : ""}`;
+    <div class="invite-notes"><p>${I.clock}<span>${album.expiresDate}까지 열 수 있어요</span></p><p>${I.check}<span>앱 설치나 가입 없이 바로 볼 수 있어요</span></p></div>
+    ${st === "approve" ? '<p class="note">이 앨범은 방장이 승인해야 사진을 볼 수 있어요.</p>' : ""}`;
 }
 function inviteBottom() {
   if (S.invite === "expired") return `<div class="cta"><button class="btn btn-main" type="button" data-msg="${album.host}님에게 새 링크를 요청했어요">새 링크 요청하기</button></div>`;
   if (S.waiting) return `<div class="cta"><button class="btn btn-sub" type="button" data-approved>승인됐어요 (프로토타입에서 넘어가기)</button><button class="btn-text" type="button" data-cancelwait>참여 요청 취소</button></div>`;
+  if (S.inviteStep === "declined") return `<div class="cta"><button class="btn btn-main" data-inviteback>초대 다시 보기</button></div>`;
+  if (S.inviteStep === "detail") return `<div class="cta invite-actions"><button class="btn btn-sub" type="button" data-decline>그만두기</button><button class="btn btn-main" type="button" data-startjoin>참여하기</button></div>`;
   const ok = S.nick.trim();
   return `<div class="cta">
     <button class="btn btn-main" type="button" data-join id="joinBtn" ${ok ? "" : "disabled"}>${S.invite === "approve" ? "참여 요청하기" : "참여하고 사진 보기"}</button>
-    <button class="btn-text" type="button" data-msg="초대를 거절했어요. 이 창은 닫아도 돼요">참여하지 않을게요</button>
+    <button class="btn-text" type="button" data-inviteback>뒤로</button>
   </div>`;
 }
 
@@ -485,7 +487,7 @@ function albumView() {
   const empty = S.album === "empty";
   return `
     <div class="al-bar" id="alBar">
-      <span class="brand" aria-label="서비스 이름 자리">서비스명</span>
+      <strong class="invite-brand">phoU</strong>
       <h1>${album.name}</h1>
     </div>
     <section class="al-info">
@@ -498,11 +500,7 @@ function albumView() {
       <b>아직 올라온 사진이 없어요</b>
       <p>모임이 시작되면 친구들이 찍은 사진이 여기에 모여요.<br>먼저 내 사진을 올려 볼까요?</p>
     </div>` : `
-    <div class="tabs" role="tablist">
-      ${[["all", "전체"], ["best", "AI 추천"], ["mine", "내 사진"]].map(([k, l]) =>
-        `<button class="tab" type="button" role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}${k === "mine" && S.mine.length ? `<small>${S.mine.length}</small>` : ""}</button>`).join("")}
-    </div>
-    ${S.tab === "all" ? allView() : S.tab === "best" ? bestView() : mineView()}
+    ${allView()}
     ${S.nudge ? `
     <div class="app-nudge">
       <span class="txt"><b>다음 모임엔 자동으로 모아 볼까요?</b>앱을 쓰면 찍은 사진이 따로 보내지 않아도 올라가요.</span>
@@ -511,11 +509,7 @@ function albumView() {
     </div>` : ""}`}`;
 }
 function albumBottom() {
-  const saveLabel = S.tab === "best" || S.album === "empty" ? `추천 사진 ${BEST_N}장 저장` : `추천 사진 ${BEST_N}장 저장`;
-  return `<div class="dock">
-    <button class="add" type="button" data-go="upload">${I.plus}내 사진 추가</button>
-    <button class="save" type="button" data-savebest ${S.album === "empty" ? "disabled style=\"opacity:.35\"" : ""}>${I.down}${saveLabel}</button>
-  </div>`;
+  return `<button class="web-add-fab" type="button" data-go="upload" aria-label="사진 추가하기">${I.plus}</button>`;
 }
 
 /* ---------- 내 사진 추가 ---------- */
@@ -523,6 +517,7 @@ function uploadView() {
   const list = S.picked;
   const done = list.filter(p => p.state === "done").length;
   const fail = list.filter(p => p.state === "fail").length;
+  if (list.some(p => p.state === "selected")) return `<div class="up-head"><button class="icon-btn" data-go="album" aria-label="앨범으로 돌아가기">${I.back}</button><h1>사진 선택 확인</h1></div><div class="up-sum">${list.length}장 선택됨</div><p class="note">사진을 확인하고 제외할 사진은 삭제해 주세요. ‘선택한 사진 올리기’를 누르기 전에는 업로드하지 않아요.</p><div class="up-grid">${list.map((p,i)=>`<div class="up">${p.heic?'<span class="tag">HEIC</span>':`<img class="selected-preview" src="${p.url}" alt="선택한 사진 ${i+1}">`}<button class="remove-picked" data-remove-picked="${i}" aria-label="선택한 사진 ${i+1} 제외">×</button></div>`).join("")}</div><button class="btn btn-sub" data-pick>사진 더 고르기</button><p class="note">이 프로토타입에서는 실제 서버 전송 없이 업로드 과정을 시연해요.</p>`;
   return `
     <div class="up-head">
       <button class="icon-btn" type="button" data-go="album" aria-label="앨범으로 돌아가기">${I.back}</button>
@@ -534,7 +529,7 @@ function uploadView() {
     <div class="up-grid">
       ${list.map((p, i) => `
         <div class="up${p.state === "wait" ? " wait" : ""}" style="background:${["#DADADA", "#CFCFCF", "#E3E3E3"][i % 3]}">
-          ${p.heic ? '<span class="tag">HEIC → JPEG</span>' : ""}
+          ${p.url && !p.heic ? `<img class="selected-preview" src="${p.url}" alt="선택한 사진 ${i+1}">` : ""}${p.heic ? '<span class="tag">HEIC</span>' : ""}
           ${p.state === "wait" ? '<span class="q">대기 중</span>' : ""}
           ${p.state === "up" ? `<span class="num">${Math.round(p.p)}%</span><span class="bar"><i style="width:${p.p}%"></i></span>` : ""}
           ${p.state === "done" ? `<span class="ok">${I.check}</span>` : ""}
@@ -542,7 +537,7 @@ function uploadView() {
         </div>`).join("")}
     </div>
     ${fail ? '<p class="note">연결이 끊겨서 일부 사진을 올리지 못했어요. 와이파이에 연결되면 다시 시도해 주세요.</p>' : ""}
-    <p class="note">아이폰의 HEIC 사진은 어떤 휴대폰에서도 열리도록 JPEG로 바꿔서 올려요.</p>` : `
+    <p class="note">업로드 과정은 시연용이며 실제 서버 전송이나 HEIC 변환은 하지 않아요.</p>` : `
     <div class="pick">
       ${I.upload}
       <b>내 휴대폰의 모임 사진을 골라 주세요</b>
@@ -567,6 +562,7 @@ function progressCard(list) {
 function uploadBottom() {
   const list = S.picked;
   if (!list.length) return "";
+  if (list.some(p => p.state === "selected")) return `<div class="cta"><button class="btn btn-main" data-start-upload>선택한 사진 ${list.length}장 올리기</button></div>`;
   if (uploading(list)) return `<div class="cta">
     <button class="btn btn-main" type="button" disabled>올리는 중 ${overall(list)}%</button>
     <button class="btn-text" type="button" data-upcancel>올리기 취소</button>
@@ -683,8 +679,8 @@ function toast(m, ms = 1900) {
 /* ---------- 업로드 흉내 ---------- */
 let upTimer = null;
 function startUpload() {
-  const n = 8;
-  S.picked = Array.from({ length: n }, (_, i) => ({ id: `m0-${S.mine.length + i}`, p: 0, state: i < 3 ? "up" : "wait", heic: S.device === "ios" && i % 3 === 0 }));
+  if (!S.picked.length || !S.picked.every(p => p.state === "selected")) return;
+  S.picked.forEach((p,i) => { p.state = i < 3 ? "up" : "wait"; p.p = 0; });
   render();
   runUpload();
 }
@@ -712,6 +708,15 @@ function frozenUpload() {
   const ps = [100, 100, 100, 72, 41, 18, 0, 0];
   S.picked = ps.map((v, i) => ({ id: `m0-${S.mine.length + i}`, p: v, state: v === 100 ? "done" : v === 0 ? "wait" : "up", heic: S.device === "ios" && i % 3 === 0 }));
 }
+
+
+let pickedSequence=0;
+document.getElementById("photoPicker").addEventListener("change",e=>{
+ const files=Array.from(e.target.files||[]).filter(f=>f.type.startsWith("image/")||/\.(heic|heif)$/i.test(f.name));
+ if (!files.length) { e.target.value=""; return; }
+ const selected=files.map(f=>({id:'m-selected-'+(++pickedSequence),url:URL.createObjectURL(f),p:0,state:'selected',heic:/\.(heic|heif)$/i.test(f.name)}));
+ S.picked.push(...selected); e.target.value=""; render(true);
+});
 
 /* ---------- 입력 ---------- */
 document.addEventListener("input", e => {
@@ -775,10 +780,13 @@ document.addEventListener("click", e => {
   }
 
   // 초대
+  if (t("[data-startjoin]")) { S.inviteStep = "name"; render(); document.getElementById("nick")?.focus(); return; }
+  if (t("[data-inviteback]")) { S.inviteStep = "detail"; render(); return; }
+  if (t("[data-decline]")) { S.inviteStep = "declined"; render(); return; }
   if (t("[data-join]")) {
+    if (!S.nick.trim()) return;
     if (S.invite === "approve") { S.waiting = true; render(); return; }
     S.joined = true; S.screen = "album"; S.tab = "all"; render();
-    toast(`${S.nick}님, 환영해요!`);
     return;
   }
   if (t("[data-approved]")) { S.waiting = false; S.joined = true; S.screen = "album"; render(); toast(`${album.host}님이 승인했어요`); return; }
@@ -811,7 +819,9 @@ document.addEventListener("click", e => {
   if (ph) { openViewer(ph.dataset.photo); return; }
 
   // 업로드
-  if (t("[data-pick]")) { startUpload(); return; }
+  if (t("[data-pick]")) { document.getElementById("photoPicker").click(); return; }
+  if (t("[data-start-upload]")) { startUpload(); return; }
+  if (t("[data-remove-picked]")) { const i=Number(t("[data-remove-picked]").dataset.removePicked); URL.revokeObjectURL(S.picked[i].url); S.picked.splice(i,1); render(true); return; }
   if (t("[data-retry]")) {
     const p = S.picked[Number(t("[data-retry]").dataset.retry)];
     p.state = "up"; p.p = 40; S.upload = "default";
